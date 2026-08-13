@@ -4,7 +4,8 @@ import { filesFromDataTransfer, gather } from '../load/dropzone'
 import { initialState, reducer, visibleNights } from '../state'
 import type { WorkerResponse } from '../types'
 import { cmH2O } from '../types'
-import { NightDetail } from './NightDetail'
+import type { Tab } from './NightDetail'
+import { NightDetail, NightHeader } from './NightDetail'
 import { NightTable } from './NightTable'
 import { RangeSelector } from './RangeSelector'
 import { Summary } from './Summary'
@@ -14,7 +15,18 @@ export function App() {
   const [state, dispatch] = useReducer(reducer, initialState)
   const workerRef = useRef<Worker | null>(null)
   const [dragOver, setDragOver] = useState(false)
+  const [detailTab, setDetailTab] = useState<Tab>('pressure')
   const nextId = useRef(1)
+
+  // Info notices dismiss themselves after 5 s; errors stay until dismissed.
+  const autoDismissed = useRef(new Set<number>())
+  useEffect(() => {
+    for (const n of state.notices) {
+      if (n.kind !== 'info' || autoDismissed.current.has(n.id)) continue
+      autoDismissed.current.add(n.id)
+      setTimeout(() => dispatch({ type: 'dismiss-notice', id: n.id }), 5000)
+    }
+  }, [state.notices])
 
   useEffect(() => {
     const w = new ParseWorker()
@@ -72,48 +84,54 @@ export function App() {
     : undefined
 
   return (
-    <main
-      class="container"
-      style={dragOver ? 'outline: 3px dashed var(--pico-primary)' : ''}
-    >
-      <FilePickers
-        onFiles={ingest}
-        pending={state.pending}
-        nights={state.nights.length}
-      />
-      {state.notices.map((n) => (
-        <article key={n.id} role="alert">
-          {n.text}{' '}
-          <a
-            href="#"
-            onClick={(e) => {
-              e.preventDefault()
-              dispatch({ type: 'dismiss-notice', id: n.id })
-            }}
-          >
-            dismiss
-          </a>
-        </article>
-      ))}
-      {state.nights.length === 0 && state.pending === 0 ? (
-        <article style="text-align:center; padding: 4rem">
-          <h2>Drop .ds1 files or a folder here</h2>
-          <p>Nothing is uploaded — parsing happens entirely in this page.</p>
-        </article>
-      ) : selectedNight ? (
-        <NightDetail
-          night={selectedNight}
-          onBack={() => dispatch({ type: 'select-night', name: null })}
-        />
-      ) : (
-        <>
-          <Summary nights={visible} />
-          <RangeSelector
-            nights={state.nights}
-            range={state.range}
-            onRange={(range) => dispatch({ type: 'set-range', range })}
+    <>
+      <header class="container">
+        {selectedNight ? (
+          <NightHeader
+            night={selectedNight}
+            onBack={() => dispatch({ type: 'select-night', name: null })}
+            tab={detailTab}
+            onTab={setDetailTab}
           />
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem">
+        ) : (
+          <FilePickers
+            onFiles={ingest}
+            pending={state.pending}
+            nights={state.nights.length}
+          />
+        )}
+      </header>
+      <main
+        class="container"
+        style={dragOver ? 'outline: 3px dashed var(--pico-primary)' : ''}
+      >
+        {state.notices.map((n) => (
+          <article key={n.id} role="alert" class="notice">
+            <span>{n.text}</span>
+            <button
+              class="notice-close"
+              aria-label="dismiss"
+              onClick={() => dispatch({ type: 'dismiss-notice', id: n.id })}
+            >
+              ×
+            </button>
+          </article>
+        ))}
+        {state.nights.length === 0 && state.pending === 0 ? (
+          <article style="text-align:center; padding: 4rem">
+            <h2>Drop .ds1 files or a folder here</h2>
+            <p>Nothing is uploaded — parsing happens entirely in this page.</p>
+          </article>
+        ) : selectedNight ? (
+          <NightDetail night={selectedNight} tab={detailTab} />
+        ) : (
+          <>
+            <Summary nights={visible} />
+            <RangeSelector
+              nights={state.nights}
+              range={state.range}
+              onRange={(range) => dispatch({ type: 'set-range', range })}
+            />
             <TrendChart
               title="duration (h)"
               nights={visible}
@@ -138,20 +156,20 @@ export function App() {
               value={(n) => n.leakMedian}
               color="#8a6d3b"
             />
-          </div>
-          <NightTable
-            nights={visible}
-            onSelect={(name) => dispatch({ type: 'select-night', name })}
-          />
-        </>
-      )}
-      <footer>
-        <small>
-          ds-viewer v{__APP_VERSION__} · {__GIT_COMMIT__} · timestamps are
-          device-clock and nominal; durations are exact
-        </small>
-      </footer>
-    </main>
+            <NightTable
+              nights={visible}
+              onSelect={(name) => dispatch({ type: 'select-night', name })}
+            />
+          </>
+        )}
+        <footer>
+          <small>
+            ds-viewer v{__APP_VERSION__} · {__GIT_COMMIT__} · timestamps are
+            device-clock and nominal; durations are exact
+          </small>
+        </footer>
+      </main>
+    </>
   )
 }
 
@@ -173,29 +191,41 @@ function FilePickers({
     <nav>
       <ul>
         <li>
-          <strong>ds-viewer</strong>{' '}
-          {nights > 0 && <small>{nights} nights loaded</small>}
-          {pending > 0 && <small> · parsing {pending}…</small>}
+          <hgroup>
+            <h3>ds-viewer</h3>
+            {(nights > 0 || pending > 0) && (
+              <p>
+                {nights > 0 && `${nights} nights loaded`}
+                {pending > 0 && ` · parsing ${pending}…`}
+              </p>
+            )}
+          </hgroup>
         </li>
       </ul>
       <ul>
         <li>
-          <label role="button" class="secondary">
-            + files
-            <input type="file" multiple accept=".ds1" hidden onChange={pick} />
-          </label>
-        </li>
-        <li>
-          <label role="button" class="secondary">
-            + folder
-            {/* webkitdirectory is non-standard but universal */}
-            <input
-              type="file"
-              hidden
-              {...{ webkitdirectory: true }}
-              onChange={pick}
-            />
-          </label>
+          <div role="group">
+            <label role="button" class="secondary">
+              + files
+              <input
+                type="file"
+                multiple
+                accept=".ds1"
+                hidden
+                onChange={pick}
+              />
+            </label>
+            <label role="button" class="secondary">
+              + folder
+              {/* webkitdirectory is non-standard but universal */}
+              <input
+                type="file"
+                hidden
+                {...{ webkitdirectory: true }}
+                onChange={pick}
+              />
+            </label>
+          </div>
         </li>
       </ul>
     </nav>

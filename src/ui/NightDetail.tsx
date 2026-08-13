@@ -2,76 +2,86 @@ import { useState } from 'preact/hooks'
 import uPlot from 'uplot'
 import type { Night } from '../types'
 import { cmH2O, deci, PARAM, WORKMODE } from '../types'
-import { Chart } from './Chart'
+import { axisTheme, Chart } from './Chart'
 import { Histogram } from './Histogram'
 import { clockLabel, nightGrid, placeSessions } from './nightAxis'
 import { Waveform } from './Waveform'
 
-type Tab = 'pressure' | 'leak' | 'events'
+export type Tab = 'pressure' | 'leak' | 'events'
 
-export function NightDetail({
+/** Header-bar content for the detail page; App renders it in <header>. */
+export function NightHeader({
   night,
   onBack,
+  tab,
+  onTab,
 }: {
   night: Night
   onBack: () => void
+  tab: Tab
+  onTab: (t: Tab) => void
 }) {
-  const [tab, setTab] = useState<Tab>('pressure')
-  const [jumpSec, setJumpSec] = useState<number | null>(null)
   const first = night.sessions[0]
   const mode = first?.params.get(PARAM.WorkMode)
   const minP = first?.params.get(PARAM.MinPress)
   const maxP = first?.params.get(PARAM.MaxPress)
   return (
-    <section>
-      <nav>
-        <ul>
-          <li>
-            <a
-              href="#"
-              onClick={(e) => {
-                e.preventDefault()
-                onBack()
-              }}
-            >
-              ← all nights
-            </a>
-          </li>
-          <li>
-            <strong>{night.date.toLocaleDateString()}</strong>{' '}
-            <small>
+    <nav>
+      <ul>
+        <li>
+          <a
+            href="#"
+            onClick={(e) => {
+              e.preventDefault()
+              onBack()
+            }}
+          >
+            ← all nights
+          </a>
+        </li>
+        <li>
+          <hgroup>
+            <h3>{night.date.toLocaleDateString()}</h3>
+            <p>
               {mode !== undefined ? (WORKMODE[mode] ?? mode) : ''}{' '}
               {minP !== undefined && maxP !== undefined
                 ? `${cmH2O(deci(minP)).toFixed(0)}–${cmH2O(deci(maxP)).toFixed(0)} cmH2O`
                 : ''}{' '}
               · {night.sessions.length} session(s)
               {night.partial ? ' · ⚠ file truncated' : ''}
-            </small>
-          </li>
-        </ul>
-        <ul>
-          {(['pressure', 'leak', 'events'] as const).map((t) => (
-            <li key={t}>
+            </p>
+          </hgroup>
+        </li>
+      </ul>
+      <ul>
+        <li>
+          <div role="group">
+            {(['pressure', 'leak', 'events'] as const).map((t) => (
               <button
+                key={t}
                 class={tab === t ? '' : 'outline'}
-                onClick={() => setTab(t)}
+                onClick={() => onTab(t)}
               >
                 {t}
               </button>
-            </li>
-          ))}
-        </ul>
-      </nav>
-      <div style="display:grid; grid-template-columns: 2fr 1fr; gap: 1rem">
-        <div>
-          {tab === 'events' ? (
-            <EventLanes night={night} onJump={setJumpSec} />
-          ) : (
-            <OverviewStrip night={night} channel={tab} onJump={setJumpSec} />
-          )}
-        </div>
-        <Histogram night={night} />
-      </div>
+            ))}
+          </div>
+        </li>
+      </ul>
+    </nav>
+  )
+}
+
+export function NightDetail({ night, tab }: { night: Night; tab: Tab }) {
+  const [jumpSec, setJumpSec] = useState<number | null>(null)
+  return (
+    <section>
+      {tab === 'events' ? (
+        <EventLanes night={night} onJump={setJumpSec} />
+      ) : (
+        <OverviewStrip night={night} channel={tab} onJump={setJumpSec} />
+      )}
+      <Histogram night={night} />
       <Waveform night={night} jumpSec={jumpSec} />
     </section>
   )
@@ -108,9 +118,13 @@ function OverviewStrip({
             bands: [{ series: [2, 1], fill: '#3a7ca544' }],
             axes: [
               {
+                ...axisTheme(),
                 values: (_u, splits) => splits.map(clockLabel),
               },
-              { label: channel === 'pressure' ? 'cmH2O' : 'L/min' },
+              {
+                ...axisTheme(),
+                label: channel === 'pressure' ? 'cmH2O' : 'L/min',
+              },
             ],
             legend: { show: false },
             cursor: { drag: { x: false, y: false } },
