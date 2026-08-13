@@ -15,7 +15,6 @@ No vendor code or binaries are included or required. See [Legal](#legal).
 
 - **`ds1.py`** — decoder, session summariser and CSV exporter. Works, validated (see below).
 - **[`DS1_FORMAT.md`](DS1_FORMAT.md)** — the format specification.
-- A graphical viewer is _not_ implemented yet, despite the repo name.
 
 Only `.ds1` is supported. The same software also reads `.ds3` and `.ds4`, which are handled by
 different parsers in the vendor code and are **not** the same layout.
@@ -44,6 +43,31 @@ Summary output:
     leak      median 19.4 L/min   peak flow 83 L/min
     events    {'APNEA': 4, 'PRESS_UP': 5, 'PRESS_DOWN': 7}   AI 2.2/h (device-flagged)
 ```
+
+## Viewer
+
+A single-file HTML viewer lives in this repo alongside the CLI. Build it with:
+
+```sh
+make setup   # once: toolchain via mise, deps via pnpm
+make build   # emits dist/index.html
+```
+
+Open `dist/index.html` in any browser (no server needed) and drop your `.ds1`
+files or the whole SD-card folder onto the page. Parsing happens entirely
+in-browser; nothing is uploaded, nothing is stored between reloads.
+
+It shows night-over-night trends (duration, P95, AHI, leak) with a visual
+date-range selector, a sortable table, and a per-night drill-down: pressure
+envelope across the night, time-in-pressure histogram with P90/P95, and a
+zoomable 10 Hz pressure/flow waveform with the device's apnea markers.
+
+The displayed percentiles use the standard time-weighted definition and will
+not match the vendor software's P90/P95 (see DS1_FORMAT.md). Apnea counts are
+the device's own markers, not the vendor software's re-scored events.
+
+Development: `make dev`, `make test`, `make typecheck`. The parser is verified
+against `ds1.py` row-for-row with `make test-diff DS1_DIR=<your data dir>`.
 
 ## Export layout
 
