@@ -3,8 +3,11 @@ import ParseWorker from '../parse/worker?worker&inline'
 import { filesFromDataTransfer, gather } from '../load/dropzone'
 import { initialState, reducer, visibleNights } from '../state'
 import type { WorkerResponse } from '../types'
+import { cmH2O } from '../types'
 import { NightTable } from './NightTable'
+import { RangeSelector } from './RangeSelector'
 import { Summary } from './Summary'
+import { TrendChart } from './TrendChart'
 
 export function App() {
   const [state, dispatch] = useReducer(reducer, initialState)
@@ -96,6 +99,37 @@ export function App() {
       ) : (
         <>
           <Summary nights={visible} />
+          <RangeSelector
+            nights={state.nights}
+            range={state.range}
+            onRange={(range) => dispatch({ type: 'set-range', range })}
+          />
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem">
+            <TrendChart
+              title="duration (h)"
+              nights={visible}
+              value={(n) => n.hours}
+              color="#4c9a52"
+            />
+            <TrendChart
+              title="P95 (cmH2O)"
+              nights={visible}
+              value={(n) => cmH2O(n.press.p95)}
+              color="#3a7ca5"
+            />
+            <TrendChart
+              title="AHI"
+              nights={visible}
+              value={(n) => n.ahi}
+              color="#a54c3a"
+            />
+            <TrendChart
+              title="median leak (L/min)"
+              nights={visible}
+              value={(n) => n.leakMedian}
+              color="#8a6d3b"
+            />
+          </div>
           <NightTable
             nights={visible}
             onSelect={(name) => dispatch({ type: 'select-night', name })}
