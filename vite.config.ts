@@ -2,7 +2,7 @@ import preact from '@preact/preset-vite'
 import { execSync } from 'node:child_process'
 import { defineConfig } from 'vite'
 import { viteSingleFile } from 'vite-plugin-singlefile'
-import pkg from './package.json'
+import pkg from './package.json' with { type: 'json' }
 
 const git = (cmd: string, fallback: string) => {
   try {
