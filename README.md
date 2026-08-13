@@ -235,6 +235,18 @@ Code and documentation in this repository are MIT licensed — see [`LICENSE`](L
 The format description itself is a statement of fact about an interface and is not claimed as
 property by anyone; the licence covers this repository's particular expression of it.
 
+## AI disclosure
+
+This project — the reverse engineering, the format specification, `ds1.py`, the viewer, and
+this documentation — was written by Claude (Anthropic's model) working in Claude Code,
+directed and reviewed by a human. The scope, priorities and design calls were human;
+the analysis and implementation were AI.
+
+Correctness does not rest on trusting either party: the parser is verified row-for-row
+against the reference decoder across the full test corpus (17.2 M samples), and the
+reference decoder is itself checked against the vendor software's own output (see
+[Accuracy](#accuracy)). Bugs are still possible — report them like any other.
+
 ## Disclaimer
 
 Not a medical device and not medical software. Nothing here is validated for clinical use. Do not
