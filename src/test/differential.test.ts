@@ -14,6 +14,7 @@ const dir = process.env['DS1_DIR']?.replace(/^~/, process.env['HOME'] ?? '')
 const d = dir ? describe : describe.skip
 
 d('differential vs ds1.py', () => {
+  if (!dir) return
   const dataDir = resolve(dir ?? '')
   const files = readdirSync(dataDir).filter((f) => f.endsWith('.ds1'))
   const out = mkdtempSync(join(tmpdir(), 'ds1diff-'))
