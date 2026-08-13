@@ -83,6 +83,16 @@ nav [role='group'] {
   background: none;
 }
 
+/* Night table: numeric columns (duration..leak, columns 2-9) right-aligned
+   with tabular digits so magnitudes line up down the rows */
+table.nights {
+  font-variant-numeric: tabular-nums;
+}
+
+table.nights :is(th, td):nth-child(n + 2):nth-child(-n + 9) {
+  text-align: right;
+}
+
 /* ---- Vertical rhythm ----
    Major regions breathe; tightly-coupled elements stay glued. On the list
    page every region (KPI row, range selector, each trend chart, table) is

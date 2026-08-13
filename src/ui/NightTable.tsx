@@ -42,7 +42,7 @@ export function NightTable({
     return `${Math.floor(s / 3600)}:${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}`
   }
   return (
-    <table>
+    <table class="nights">
       <thead>
         <tr>
           {header('date', 'date')}

@@ -1,7 +1,7 @@
 import uPlot from 'uplot'
 import type { DateRange } from '../state'
 import type { Night } from '../types'
-import { axisTheme, Chart, dateCursorSync } from './Chart'
+import { axisTheme, Chart, dateCursorSync, localDateValues } from './Chart'
 
 const DAY = 86400_000
 
@@ -136,7 +136,10 @@ export function RangeSelector({
                   points: { show: false },
                 },
               ],
-              axes: [{ ...axisTheme(), size: 24 }, { show: false }],
+              axes: [
+                { ...axisTheme(), size: 24, values: localDateValues },
+                { show: false },
+              ],
               legend: { show: false },
               cursor: {
                 y: false,

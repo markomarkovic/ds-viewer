@@ -33,6 +33,36 @@ export const dateCursorSync: uPlot.Cursor.Sync = {
 }
 
 /**
+ * Locale-aware values for a calendar x axis. uPlot's built-in formatter
+ * is fixed English (and 12-hour); this follows the browser's locale for
+ * dates and always uses 24-hour time. Day-or-coarser splits get a
+ * day-month label; sub-day splits get HH:MM, with midnight showing the
+ * date instead.
+ */
+const dayMonth = new Intl.DateTimeFormat(undefined, {
+  day: 'numeric',
+  month: 'short',
+})
+const time24 = new Intl.DateTimeFormat(undefined, {
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+})
+
+export function localDateValues(
+  _u: uPlot,
+  splits: number[]
+): (string | number)[] {
+  const step = splits.length > 1 ? (splits[1] ?? 0) - (splits[0] ?? 0) : 86400
+  return splits.map((s) => {
+    const d = new Date(s * 1000)
+    if (step >= 86400) return dayMonth.format(d)
+    const midnight = d.getHours() === 0 && d.getMinutes() === 0
+    return midnight ? dayMonth.format(d) : time24.format(d)
+  })
+}
+
+/**
  * Floating cursor tooltip. The formatter returns the tooltip text for the
  * hovered index (newlines allowed), or null to hide it. Positioned inside
  * u.over, flipping sides at the plot's midpoint so it never clips.
