@@ -96,7 +96,7 @@ export function Waveform({
   )
 
   return (
-    <section>
+    <section class="waveform">
       <div class="toolbar">
         <div role="group">
           {PRESETS.map(([label, sec]) => (

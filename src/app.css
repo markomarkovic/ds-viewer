@@ -63,6 +63,27 @@ nav [role='group'] {
   background: none;
 }
 
+/* ---- Vertical rhythm ----
+   Major regions breathe; tightly-coupled elements stay glued. On the list
+   page every region (KPI row, range selector, each trend chart, table) is
+   a direct child of main; on the detail page the .night section owns its
+   regions; the waveform toolbar + chart pair is one unit. */
+main > * + * {
+  margin-top: 1.75rem;
+}
+
+.night > * + * {
+  margin-top: 1.75rem;
+}
+
+.waveform > * + * {
+  margin-top: 0.35rem;
+}
+
+main > footer {
+  margin-top: 3rem;
+}
+
 /* Header bar: compact hgroup titles, no stacked margins */
 header.container {
   padding-block: calc(var(--pico-spacing) * 0.5);

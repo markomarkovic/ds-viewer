@@ -76,7 +76,7 @@ export function NightDetail({ night }: { night: Night }) {
 
   const strip = { view, onWindow: setWindow, onCenter: centerAt }
   return (
-    <section>
+    <section class="night">
       <OverviewStrip night={night} channel="pressure" {...strip} />
       <OverviewStrip night={night} channel="leak" {...strip} />
       <EventChart night={night} {...strip} />
