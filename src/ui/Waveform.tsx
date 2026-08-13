@@ -3,7 +3,7 @@ import uPlot from 'uplot'
 import { minmaxEnvelope } from '../parse/decimate'
 import type { Night } from '../types'
 import { FLOW_LPM, HZ } from '../types'
-import { Chart } from './Chart'
+import { axisTheme, Chart } from './Chart'
 import { clockLabel, placeSessions } from './nightAxis'
 
 const PRESETS = [
@@ -92,45 +92,47 @@ export function Waveform({
 
   return (
     <section>
-      <div role="group">
-        {PRESETS.map(([label, sec]) => (
+      <div class="toolbar">
+        <div role="group">
+          {PRESETS.map(([label, sec]) => (
+            <button
+              key={label}
+              class={view.windowSec === sec ? '' : 'outline'}
+              onClick={() =>
+                setView((v) => ({
+                  windowSec: sec,
+                  startSec: clampStart(v.startSec, sec),
+                }))
+              }
+            >
+              {label}
+            </button>
+          ))}
           <button
-            key={label}
-            class={view.windowSec === sec ? '' : 'outline'}
+            class="outline"
+            onClick={() => setView({ startSec: firstStart, windowSec: 300 })}
+          >
+            Home
+          </button>
+          <button class="outline" onClick={() => page(-1)}>
+            ◀ Page
+          </button>
+          <button class="outline" onClick={() => page(1)}>
+            Page ▶
+          </button>
+          <button
+            class="outline"
             onClick={() =>
               setView((v) => ({
-                windowSec: sec,
-                startSec: clampStart(v.startSec, sec),
+                ...v,
+                startSec: clampStart(lastEnd - v.windowSec, v.windowSec),
               }))
             }
           >
-            {label}
+            End
           </button>
-        ))}
-        <button
-          class="outline"
-          onClick={() => setView({ startSec: firstStart, windowSec: 300 })}
-        >
-          Home
-        </button>
-        <button class="outline" onClick={() => page(-1)}>
-          ◀ Page
-        </button>
-        <button class="outline" onClick={() => page(1)}>
-          Page ▶
-        </button>
-        <button
-          class="outline"
-          onClick={() =>
-            setView((v) => ({
-              ...v,
-              startSec: clampStart(lastEnd - v.windowSec, v.windowSec),
-            }))
-          }
-        >
-          End
-        </button>
-        <small>
+        </div>
+        <small class="range-label">
           {clockLabel(view.startSec)} –{' '}
           {clockLabel(view.startSec + view.windowSec)}
         </small>
@@ -176,9 +178,12 @@ export function Waveform({
                 { series: [4, 3], fill: '#4c9a5233' },
               ],
               axes: [
-                { values: (_u, splits) => splits.map(clockLabel) },
-                { scale: 'p', label: 'pressure cmH2O' },
-                { scale: 'f', label: 'flow L/min', side: 1 },
+                {
+                  ...axisTheme(),
+                  values: (_u, splits) => splits.map(clockLabel),
+                },
+                { ...axisTheme(), scale: 'p', label: 'pressure cmH2O' },
+                { ...axisTheme(), scale: 'f', label: 'flow L/min', side: 1 },
               ],
               legend: { show: false },
               cursor: { drag: { x: false, y: false } },

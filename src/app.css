@@ -1,0 +1,82 @@
+/* Outline buttons: neutral borders matching form inputs, not primary blue */
+button.outline,
+[role='button'].outline {
+  border-color: var(--pico-form-element-border-color);
+  color: var(--pico-color);
+}
+
+button.outline:is(:hover, :active, :focus),
+[role='button'].outline:is(:hover, :active, :focus) {
+  border-color: var(--pico-primary);
+  color: var(--pico-primary);
+  background: transparent;
+}
+
+/* Button groups inside navs carry their own spacing */
+nav [role='group'] {
+  margin-bottom: 0;
+  width: auto;
+}
+
+/* Chart toolbars: button group left, time-range label right */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: var(--pico-spacing);
+}
+
+.toolbar [role='group'] {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.range-label {
+  color: var(--pico-muted-color);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Notices: text left, close icon right */
+.notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.notice-close {
+  width: auto;
+  margin: 0;
+  padding: 0 0.25rem;
+  background: none;
+  border: none;
+  box-shadow: none;
+  color: var(--pico-muted-color);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.notice-close:is(:hover, :focus) {
+  color: var(--pico-color);
+  background: none;
+}
+
+/* Header bar: compact hgroup titles, no stacked margins */
+header.container {
+  padding-block: calc(var(--pico-spacing) * 0.5);
+}
+
+header hgroup,
+header hgroup > * {
+  margin-bottom: 0;
+}
+
+/* Inline info marker hosting a Pico data-tooltip, sits in a title line */
+.info-tip {
+  color: var(--pico-muted-color);
+  font-weight: normal;
+  cursor: help;
+  border-bottom: none;
+}
