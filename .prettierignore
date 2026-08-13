@@ -4,3 +4,7 @@ pnpm-workspace.yaml
 # Build output: dist/index.html is one ~300 KB file with everything inlined.
 # Formatting it is slow and pointless.
 dist/
+
+# Orchestration scratch: git-ignored planning/task artifacts, not part of
+# the shipped repository content.
+.superpowers/

@@ -15,7 +15,7 @@ No vendor code or binaries are included or required. See [Legal](#legal).
 
 - **`ds1.py`** — decoder, session summariser and CSV exporter. Works, validated (see below).
 - **[`DS1_FORMAT.md`](DS1_FORMAT.md)** — the format specification.
-- A graphical viewer is *not* implemented yet, despite the repo name.
+- A graphical viewer is _not_ implemented yet, despite the repo name.
 
 Only `.ds1` is supported. The same software also reads `.ds3` and `.ds4`, which are handled by
 different parsers in the vendor code and are **not** the same layout.
@@ -49,11 +49,11 @@ Summary output:
 
 `--export` writes three things:
 
-| File | Rows | Contents |
-|---|---|---|
-| `DDMMYYYY.csv` (one per night) | 10 per second | `session, t_s, timestamp, pressure_cmh2o, flow_lpm` |
-| `sessions.csv` | one per session | start/end, duration, settings, pressure and leak statistics, event counts |
-| `events.csv` | one per event | `t_s`, timestamp, type, and the raw `d1,d2,d3` payload |
+| File                           | Rows            | Contents                                                                  |
+| ------------------------------ | --------------- | ------------------------------------------------------------------------- |
+| `DDMMYYYY.csv` (one per night) | 10 per second   | `session, t_s, timestamp, pressure_cmh2o, flow_lpm`                       |
+| `sessions.csv`                 | one per session | start/end, duration, settings, pressure and leak statistics, event counts |
+| `events.csv`                   | one per event   | `t_s`, timestamp, type, and the raw `d1,d2,d3` payload                    |
 
 `--csv` writes the same waveform columns, with the same header, to stdout. It is pipe-safe:
 closing the stream early (`| head`) exits quietly rather than raising.
@@ -79,12 +79,12 @@ compression. Byte 0 is a tag; all payload bytes are 7-bit clean.
 type    = (byte0 & 0x78) >> 3        subtype = byte0 & 0x07
 ```
 
-| type | tag | meaning |
-|---|---|---|
-| 0 | `0x80–83` | session on/off date and time |
-| 1 | `0x88` | device setting (key in byte 1, value `(byte2 << 7) + byte3`) |
-| 2 | `0x90` | pressure + flow sample |
-| 3 | `0x98–9d` | events: pressure up/down, apnea, snore, hypopnea, flow limitation |
+| type | tag       | meaning                                                           |
+| ---- | --------- | ----------------------------------------------------------------- |
+| 0    | `0x80–83` | session on/off date and time                                      |
+| 1    | `0x88`    | device setting (key in byte 1, value `(byte2 << 7) + byte3`)      |
+| 2    | `0x90`    | pressure + flow sample                                            |
+| 3    | `0x98–9d` | events: pressure up/down, apnea, snore, hypopnea, flow limitation |
 
 Samples are the bulk of the file, at a fixed **10 Hz**:
 
@@ -99,26 +99,26 @@ Sessions are aligned to 256-byte boundaries; a file holds one to three of them.
 
 Checked against the vendor software's own per-day table across nine days:
 
-| Quantity | Result |
-|---|---|
-| Duration | Exact — one day matched to the second, the rest within a minute |
-| Avg. pressure | Exact on all nine days |
-| Work mode, pressure settings | Exact |
-| Max. pressure | Within 0.1 cmH2O, once the low-pass filter is applied |
-| P90 / P95 | **Not reproduced** — see below |
-| Apnea count / AHI | **Not reproduced** — see below |
+| Quantity                     | Result                                                          |
+| ---------------------------- | --------------------------------------------------------------- |
+| Duration                     | Exact — one day matched to the second, the rest within a minute |
+| Avg. pressure                | Exact on all nine days                                          |
+| Work mode, pressure settings | Exact                                                           |
+| Max. pressure                | Within 0.1 cmH2O, once the low-pass filter is applied           |
+| P90 / P95                    | **Not reproduced** — see below                                  |
+| Apnea count / AHI            | **Not reproduced** — see below                                  |
 
 Two deliberate non-goals explain the gaps, and both are worth understanding before you compare
 numbers with the vendor software:
 
 - **P90/P95 are not percentiles of the sample stream.** The vendor software segments the flow
-  channel into individual breaths and takes percentiles of *per-breath* pressures (inspiratory
+  channel into individual breaths and takes percentiles of _per-breath_ pressures (inspiratory
   maximum, expiratory minimum). Reproducing them exactly needs a port of its breath-segmentation
   heuristics, which this tool does not attempt.
 - **The apnea count shown by the vendor software is not the count stored in the file.** The
   device writes its own apnea markers, but the software ignores them and re-scores events from
   the flow waveform. On one night the software reported 10 apneas where the file contained 6; on
-  another it reported 5 where the file contained 9. `ds1.py` reports what the *device* recorded,
+  another it reported 5 where the file contained 9. `ds1.py` reports what the _device_ recorded,
   labelled `device-flagged`, and does not re-score.
 
 The file is ground truth for pressure, flow, settings and device-flagged events. Everything else
@@ -149,7 +149,7 @@ Filenames are `DDMMYYYY.ds1` — day, month, four-digit year.
 - **Work-mode names are family-specific.** The vendor software maps the `WorkMode` setting to a
   mode name through a table selected by device family; `ds1.py` uses the `DS` branch, which is
   correct for a DS-6. On a machine from another family the same numeric code means a different
-  mode, so the *label* would be wrong even though the rest of the decode holds. For reference,
+  mode, so the _label_ would be wrong even though the rest of the decode holds. For reference,
   the DS-6 reports `DEVICE_TYPE = 1` and `VER = 9` in its parameter records.
 - Validated against a single **DS-6 AUTO CPAP** running in AUTO mode, over 69 nights
   (140 sessions, ~478 h). Bilevel and APCV modes are decoded but untested. Other machines in
@@ -162,7 +162,7 @@ and the 10 Hz rate were all derived from the files themselves, by looking at rec
 value distributions and the correlation between the pressure channel and the pressure-change
 events.
 
-The vendor's own analysis library then supplied the field *names* and confirmed the layout, plus
+The vendor's own analysis library then supplied the field _names_ and confirmed the layout, plus
 four details that black-box analysis had got wrong or missed: the `<< 7` parameter packing, the
 rule that selects the raw-vs-rescaled data path, the filter coefficients, and the work-mode
 mapping.
@@ -170,13 +170,13 @@ mapping.
 ## Legal
 
 This documents a **data format**, which is not a copyrightable work — it is functional
-information, not expression. The CJEU held exactly this in *SAS Institute v World Programming*
+information, not expression. The CJEU held exactly this in _SAS Institute v World Programming_
 (C-406/10): the functionality of a program, its language, and the format of its data files are
 not protected by copyright. The US equivalent is 17 USC §102(b).
 
 Examining the vendor's software to determine those facts is expressly permitted for
 interoperability purposes: EU Software Directive 2009/24/EC Art. 5(3) and Art. 6, whose
-protections cannot be signed away (Art. 8). In the US, *Sega v. Accolade* and *Sony v. Connectix*
+protections cannot be signed away (Art. 8). In the US, _Sega v. Accolade_ and _Sony v. Connectix_
 treat intermediate copying for this purpose as fair use, and DMCA §1201(f) provides an
 interoperability exception. No technological protection measure was circumvented: the software
 ships unobfuscated and without any licence agreement or anti-reverse-engineering term.

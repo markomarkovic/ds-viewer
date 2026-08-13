@@ -15,7 +15,7 @@ one's own data, on any platform.
 
 **In:**
 
-- Drag-and-drop of individual files *or* a whole folder.
+- Drag-and-drop of individual files _or_ a whole folder.
 - Per-night summary: duration, pressure statistics, leak, device-flagged events.
 - Trend charts across nights, with a visual date-range selector.
 - Sortable table of nights.
@@ -25,7 +25,7 @@ one's own data, on any platform.
 **Out (v1):**
 
 - Anything requiring breath segmentation — tidal volume, respiratory rate, minute
-  ventilation, per-breath annotations. Deferred deliberately; see *Metrics*.
+  ventilation, per-breath annotations. Deferred deliberately; see _Metrics_.
 - OSA/CSA classification and computed event durations.
 - Persistence between reloads.
 - Editing or annotating data.
@@ -33,18 +33,18 @@ one's own data, on any platform.
 
 ## Decisions
 
-| Decision | Choice | Why |
-|---|---|---|
-| Language | **TypeScript, `strict`** | The recurring hazard in this format is unit confusion — pressure stored in 0.1 cmH2O, flow in raw counts, time appearing as sample index, elapsed seconds and wall clock. Branded types make those mutually unassignable, so the class of bug most likely to produce plausible-but-wrong output becomes a compile error. Vite and Vitest both handle TS natively via esbuild. |
-| Framework | **Preact** | State here is app-shaped — file set → nights → filter → selection → viewport — with derived values at each level. Vite means the no-build argument for Alpine is moot. Preact is also smaller (~4 KB gzip vs ~15 KB) and gives clean `useRef`/`useEffect` for driving an imperative canvas chart. |
-| Charts | **uPlot** | Built for time-series at millions of points, canvas-based, ~16 KB gzip, with zoom/pan built in. Chart.js struggles at this scale; ECharts (~1 MB) is untenable inside a single file. Bar paths mean one library covers both trend and waveform charts. |
-| CSS | **PicoCSS** | Classless semantic styling; keeps markup clean and the bundle small. |
-| Bundling | **Vite + vite-plugin-singlefile** | Inlines everything into one `dist/index.html`. |
-| Package manager | **pnpm** | Lockfile committed. `packageManager` field in `package.json` pins pnpm's own version so Corepack resolves it identically everywhere. |
-| Dependency versions | **Exact pins, no ranges** | Every dependency written as `"1.2.3"`, never `^1.2.3`. Enforced by `save-exact=true` in `.npmrc` so future `pnpm add` calls cannot reintroduce a range. A viewer whose whole premise is a reproducible single file should not have its output drift because a transitive minor bumped. |
-| Parsing | **Web Worker** | ~70 MB of binary across 69 files would visibly freeze the main thread. |
-| Persistence | **None** | Re-dropping costs ~2 s. Avoids a storage layer, works identically on `file://` and `https://`, and leaves no health data in the browser profile. (Chrome also blocks IndexedDB on `file://`, which would have broken the single-file premise.) |
-| Memory strategy | **Retain all samples** | 17.2 M samples × 2 channels as `Uint16Array` is ~69 MB — comfortable. Buys instant drill-down with no re-parse. |
+| Decision            | Choice                            | Why                                                                                                                                                                                                                                                                                                                                                                           |
+| ------------------- | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Language            | **TypeScript, `strict`**          | The recurring hazard in this format is unit confusion — pressure stored in 0.1 cmH2O, flow in raw counts, time appearing as sample index, elapsed seconds and wall clock. Branded types make those mutually unassignable, so the class of bug most likely to produce plausible-but-wrong output becomes a compile error. Vite and Vitest both handle TS natively via esbuild. |
+| Framework           | **Preact**                        | State here is app-shaped — file set → nights → filter → selection → viewport — with derived values at each level. Vite means the no-build argument for Alpine is moot. Preact is also smaller (~4 KB gzip vs ~15 KB) and gives clean `useRef`/`useEffect` for driving an imperative canvas chart.                                                                             |
+| Charts              | **uPlot**                         | Built for time-series at millions of points, canvas-based, ~16 KB gzip, with zoom/pan built in. Chart.js struggles at this scale; ECharts (~1 MB) is untenable inside a single file. Bar paths mean one library covers both trend and waveform charts.                                                                                                                        |
+| CSS                 | **PicoCSS**                       | Classless semantic styling; keeps markup clean and the bundle small.                                                                                                                                                                                                                                                                                                          |
+| Bundling            | **Vite + vite-plugin-singlefile** | Inlines everything into one `dist/index.html`.                                                                                                                                                                                                                                                                                                                                |
+| Package manager     | **pnpm**                          | Lockfile committed. `packageManager` field in `package.json` pins pnpm's own version so Corepack resolves it identically everywhere.                                                                                                                                                                                                                                          |
+| Dependency versions | **Exact pins, no ranges**         | Every dependency written as `"1.2.3"`, never `^1.2.3`. Enforced by `save-exact=true` in `.npmrc` so future `pnpm add` calls cannot reintroduce a range. A viewer whose whole premise is a reproducible single file should not have its output drift because a transitive minor bumped.                                                                                        |
+| Parsing             | **Web Worker**                    | ~70 MB of binary across 69 files would visibly freeze the main thread.                                                                                                                                                                                                                                                                                                        |
+| Persistence         | **None**                          | Re-dropping costs ~2 s. Avoids a storage layer, works identically on `file://` and `https://`, and leaves no health data in the browser profile. (Chrome also blocks IndexedDB on `file://`, which would have broken the single-file premise.)                                                                                                                                |
+| Memory strategy     | **Retain all samples**            | 17.2 M samples × 2 channels as `Uint16Array` is ~69 MB — comfortable. Buys instant drill-down with no re-parse.                                                                                                                                                                                                                                                               |
 
 Estimated single-file weight: **250–350 KB**.
 
@@ -53,12 +53,12 @@ Estimated single-file weight: **250–350 KB**.
 Runtime versions are pinned in three places that must agree, each serving a different
 audience:
 
-| File | Pins | Read by |
-|---|---|---|
-| `mise.toml` | `node = "24"` (current LTS), `pnpm = "11"` | Developers with mise; provisions the tools |
-| `package.json` → `engines` | `node >=24`, `pnpm >=11` | npm/pnpm and CI; fails loudly on a wrong runtime |
-| `package.json` → `packageManager` | `pnpm@11.9.0` | Corepack; guarantees an identical pnpm |
-| `.npmrc` | `save-exact=true` | pnpm; stops a future `pnpm add` reintroducing a range |
+| File                              | Pins                                       | Read by                                               |
+| --------------------------------- | ------------------------------------------ | ----------------------------------------------------- |
+| `mise.toml`                       | `node = "24"` (current LTS), `pnpm = "11"` | Developers with mise; provisions the tools            |
+| `package.json` → `engines`        | `node >=24`, `pnpm >=11`                   | npm/pnpm and CI; fails loudly on a wrong runtime      |
+| `package.json` → `packageManager` | `pnpm@11.9.0`                              | Corepack; guarantees an identical pnpm                |
+| `.npmrc`                          | `save-exact=true`                          | pnpm; stops a future `pnpm add` reintroducing a range |
 
 Node 24 is the active LTS line as of August 2026. `mise.toml` tracks the LTS major so
 patch updates arrive without editing, while application dependencies stay exactly pinned —
@@ -70,22 +70,22 @@ A `Makefile` is the single entry point for both halves of the repo, so nobody ha
 remember whether a task is a pnpm script or a Python invocation. `make help` is the default
 target and self-documents.
 
-| Target | Does |
-|---|---|
-| `make setup` | `mise install` then `pnpm install --frozen-lockfile` |
-| `make dev` | Vite dev server |
-| `make build` | Production build to `dist/index.html` |
-| `make test` | Vitest, unit only |
-| `make test-diff` | Opt-in differential test against real data (`DS1_DIR=...`) |
-| `make typecheck` | `tsc --noEmit` |
-| `make format` | `prettier --ignore-unknown --write .` |
-| `make lint` | Static checks, including `prettier --check` |
-| `make export` | Wraps `ds1.py --export`, so the CLI is reachable the same way |
-| `make clean` | Removes `dist/` and caches |
+| Target           | Does                                                          |
+| ---------------- | ------------------------------------------------------------- |
+| `make setup`     | `mise install` then `pnpm install --frozen-lockfile`          |
+| `make dev`       | Vite dev server                                               |
+| `make build`     | Production build to `dist/index.html`                         |
+| `make test`      | Vitest, unit only                                             |
+| `make test-diff` | Opt-in differential test against real data (`DS1_DIR=...`)    |
+| `make typecheck` | `tsc --noEmit`                                                |
+| `make format`    | `prettier --ignore-unknown --write .`                         |
+| `make lint`      | Static checks, including `prettier --check`                   |
+| `make export`    | Wraps `ds1.py --export`, so the CLI is reachable the same way |
+| `make clean`     | Removes `dist/` and caches                                    |
 
 Vite scripts stay in `package.json`; the Makefile delegates rather than duplicating them.
 
-Note that `tsc` is a *separate* step, not part of `make build`. Vite strips types via esbuild
+Note that `tsc` is a _separate_ step, not part of `make build`. Vite strips types via esbuild
 without checking them, so a build succeeding proves nothing about type correctness.
 `make typecheck` runs in CI and belongs in the pre-commit path.
 
@@ -113,7 +113,7 @@ so formatting it is slow and meaningless.
 Two consequences of that config worth knowing up front:
 
 - `prettier-plugin-organize-imports` drives the TypeScript language service, so it only acts
-  on files covered by a `tsconfig`, and it drops import *bindings* it considers unused. Bare
+  on files covered by a `tsconfig`, and it drops import _bindings_ it considers unused. Bare
   `import 'x'` forms are preserved. That is what keeps the two stylesheet imports — PicoCSS
   and uPlot — intact; they are the only side-effect imports the app should ever have.
 - Markdown uses Prettier's default `proseWrap: "preserve"`, so existing line breaks in this
@@ -131,7 +131,9 @@ import pkg from './package.json'
 
 const git = (cmd: string, fallback: string) => {
   try {
-    return execSync(cmd, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim()
+    return execSync(cmd, { stdio: ['ignore', 'pipe', 'ignore'] })
+      .toString()
+      .trim()
   } catch {
     return fallback
   }
@@ -209,42 +211,44 @@ confirms is a noon-to-noon period. Sessions nest inside it.
 // src/types.ts
 type Brand<T, B> = T & { readonly __brand: B }
 
-type Deci      = Brand<number, 'Deci'>       // 0.1 cmH2O, as stored on disk
-type CmH2O     = Brand<number, 'CmH2O'>      // display units
-type Counts    = Brand<number, 'Counts'>     // raw flow, as stored on disk
-type Lpm       = Brand<number, 'Lpm'>        // Counts * 0.12
-type SampleIdx = Brand<number, 'SampleIdx'>  // 10 Hz index within a session
-type Seconds   = Brand<number, 'Seconds'>    // elapsed within a session
-type ParamKey  = Brand<number, 'ParamKey'>   // PARAM record key byte (see DS1_FORMAT.md)
+type Deci = Brand<number, 'Deci'> // 0.1 cmH2O, as stored on disk
+type CmH2O = Brand<number, 'CmH2O'> // display units
+type Counts = Brand<number, 'Counts'> // raw flow, as stored on disk
+type Lpm = Brand<number, 'Lpm'> // Counts * 0.12
+type SampleIdx = Brand<number, 'SampleIdx'> // 10 Hz index within a session
+type Seconds = Brand<number, 'Seconds'> // elapsed within a session
+type ParamKey = Brand<number, 'ParamKey'> // PARAM record key byte (see DS1_FORMAT.md)
 
 type Night = {
-  name: string                    // filename stem, DDMMYYYY
+  name: string // filename stem, DDMMYYYY
   date: Date
   sessions: Session[]
   hours: number
   samples: number
   press: { avg: Deci; median: Deci; p90: Deci; p95: Deci; max: Deci }
-  histogram: Uint32Array          // 301 bins, 0..30.0 cmH2O at 0.1 resolution
+  histogram: Uint32Array // 301 bins, 0..30.0 cmH2O at 0.1 resolution
   leakMedian: Lpm
   events: { apnea: number; pressUp: number; pressDown: number }
   ahi: number
-  partial: boolean                // true if the file was truncated
+  partial: boolean // true if the file was truncated
 }
 
 type Session = {
-  start: Date                     // device RTC, nominal - see Timestamps
+  start: Date // device RTC, nominal - see Timestamps
   end: Date
   params: Map<ParamKey, number>
-  press: Uint16Array              // Deci, full 10 Hz
-  flow: Uint16Array               // Counts, full 10 Hz
-  leak: Float32Array              // Lpm, 1 Hz
+  press: Uint16Array // Deci, full 10 Hz
+  flow: Uint16Array // Counts, full 10 Hz
+  leak: Float32Array // Lpm, 1 Hz
   events: DeviceEvent[]
 }
 
 type DeviceEvent = {
   index: SampleIdx
   kind: 'PRESS_UP' | 'PRESS_DOWN' | 'APNEA' | 'SNORE' | 'HYP' | 'FH'
-  d1: number; d2: number; d3: number
+  d1: number
+  d2: number
+  d3: number
 }
 ```
 
@@ -275,9 +279,9 @@ Typed arrays cross the boundary by transfer, so there is no copy.
 The worker protocol is small and fully typed:
 
 ```ts
-type WorkerRequest  = { id: number; name: string; buf: ArrayBuffer }
+type WorkerRequest = { id: number; name: string; buf: ArrayBuffer }
 type WorkerResponse =
-  | { id: number; ok: true; night: Night }     // buffers in the transfer list
+  | { id: number; ok: true; night: Night } // buffers in the transfer list
   | { id: number; ok: false; error: string }
 ```
 
@@ -315,7 +319,7 @@ Two consequences worth stating explicitly:
   20 cmH2O and the vendor discards >30, so the bin is expected to stay empty — clamping
   just keeps totals consistent if it ever isn't).
 - The leak median reported per session is computed from the **full 10 Hz baseline** inside
-  the worker, *before* the baseline is decimated to 1 Hz for storage. `ds1.py` computes it
+  the worker, _before_ the baseline is decimated to 1 Hz for storage. `ds1.py` computes it
   at 10 Hz; computing ours at 1 Hz would fail the differential test by construction.
 
 Below the pixel threshold (a 30 s window is 300 samples, fewer than the pixel width)
@@ -329,18 +333,18 @@ once in the worker, retained at 1 Hz, and the full-resolution copy discarded.
 Every displayed number must be derivable directly from the two channels with no heuristic
 step. This is a deliberate constraint, not an accident of scope.
 
-| Metric | Definition |
-|---|---|
-| Duration | sample count / 10 Hz, summed across a night's sessions |
-| Avg pressure | mean of the pressure channel, truncated to 0.1 cmH2O |
-| Median / P90 / P95 | time-weighted percentiles read off the histogram |
-| Max pressure | maximum after the α=0.20 two-pass EMA |
-| Leak | α=0.03 two-pass EMA baseline of the flow channel, × 0.12 L/min per count |
-| Apnea / AHI | device-flagged `0x9a` records; AHI = count / hours |
+| Metric             | Definition                                                               |
+| ------------------ | ------------------------------------------------------------------------ |
+| Duration           | sample count / 10 Hz, summed across a night's sessions                   |
+| Avg pressure       | mean of the pressure channel, truncated to 0.1 cmH2O                     |
+| Median / P90 / P95 | time-weighted percentiles read off the histogram                         |
+| Max pressure       | maximum after the α=0.20 two-pass EMA                                    |
+| Leak               | α=0.03 two-pass EMA baseline of the flow channel, × 0.12 L/min per count |
+| Apnea / AHI        | device-flagged `0x9a` records; AHI = count / hours                       |
 
 **These will not match the vendor software's P90/P95**, which are consistently lower than
 any pressure series derivable from the file. That is a known, unresolved discrepancy — see
-*Open questions*. Displayed percentiles use the standard time-weighted definition and must
+_Open questions_. Displayed percentiles use the standard time-weighted definition and must
 be labelled as this tool's own, not presented as reproducing the vendor's.
 
 Breath-derived metrics are excluded from v1 because they are the numbers most likely to be
@@ -394,14 +398,14 @@ authoritative and wall-clock time as nominal, and say so where it could mislead.
 
 ## Error handling
 
-| Case | Behaviour |
-|---|---|
-| `.ds2` / `.ds3` / `.ds4` dropped | Refused by extension with a clear message naming the format. Critical: these are sibling formats — `.ds3`/`.ds4` have different layouts, and `.ds2` shares the layout but needs a rescale this tool does not implement. Silent skipping would be indistinguishable from a bug |
-| Other non-`.ds1` files in a folder | Skipped silently, reported as a count |
-| Truncated file | Parse what is valid, flag the night `partial`. Fixed-size self-describing records make resync a scan to the next 4-byte boundary with bit 7 set |
-| Samples before any SWITCH record | Synthesise a session at noon from the filename, matching vendor behaviour |
-| Empty or zero-session file | Shown as a night with 0 h |
-| Very large drops | Warn past ~300 nights (~350 MB projected). No fallback path until someone hits it |
+| Case                               | Behaviour                                                                                                                                                                                                                                                                     |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.ds2` / `.ds3` / `.ds4` dropped   | Refused by extension with a clear message naming the format. Critical: these are sibling formats — `.ds3`/`.ds4` have different layouts, and `.ds2` shares the layout but needs a rescale this tool does not implement. Silent skipping would be indistinguishable from a bug |
+| Other non-`.ds1` files in a folder | Skipped silently, reported as a count                                                                                                                                                                                                                                         |
+| Truncated file                     | Parse what is valid, flag the night `partial`. Fixed-size self-describing records make resync a scan to the next 4-byte boundary with bit 7 set                                                                                                                               |
+| Samples before any SWITCH record   | Synthesise a session at noon from the filename, matching vendor behaviour                                                                                                                                                                                                     |
+| Empty or zero-session file         | Shown as a night with 0 h                                                                                                                                                                                                                                                     |
+| Very large drops                   | Warn past ~300 nights (~350 MB projected). No fallback path until someone hits it                                                                                                                                                                                             |
 
 ## Testing
 
@@ -434,7 +438,7 @@ This is inert until the repository has a remote, so it lands last.
 - **The vendor's P90/P95 cannot be reproduced.** Three hypotheses were tested against nine
   reference days and all rejected: raw-sample percentiles, binned-CDF with interpolation
   (floor and round binning), and per-minute / per-5-minute aggregation. All land
-  systematically *above* the vendor's figures, as does the per-breath expiratory-minimum
+  systematically _above_ the vendor's figures, as does the per-breath expiratory-minimum
   series. Their distribution has more mass at low pressure than any series derivable from
   the file. Unresolved; does not block v1.
 - **Flow scale** (≈0.12 L/min per count) is inferred from the vendor's tidal-volume formula
