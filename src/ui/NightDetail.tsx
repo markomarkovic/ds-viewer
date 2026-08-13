@@ -1,10 +1,11 @@
-import { useState } from 'preact/hooks'
+import { useEffect, useMemo, useState } from 'preact/hooks'
 import uPlot from 'uplot'
 import type { EventKind, Night } from '../types'
 import { cmH2O, deci, PARAM, WORKMODE } from '../types'
 import { axisTheme, Chart, nightCursorSync, tooltipPlugin } from './Chart'
 import { Histogram } from './Histogram'
-import { clockLabel, nightGrid, placeSessions } from './nightAxis'
+import type { NightView } from './nightAxis'
+import { clockLabel, nightBounds, nightGrid, placeSessions } from './nightAxis'
 import { Waveform } from './Waveform'
 
 /** Header-bar content for the detail page; App renders it in <header>. */
@@ -52,36 +53,129 @@ export function NightHeader({
 }
 
 export function NightDetail({ night }: { night: Night }) {
-  const [jumpSec, setJumpSec] = useState<number | null>(null)
+  const { firstStart, lastEnd } = nightBounds(night)
+  const [view, setView] = useState<NightView>({
+    startSec: firstStart,
+    windowSec: 300,
+  })
+  useEffect(() => {
+    setView({ startSec: nightBounds(night).firstStart, windowSec: 300 })
+  }, [night])
+
+  const clampStart = (s: number, w: number) =>
+    Math.min(Math.max(s, firstStart), Math.max(firstStart, lastEnd - w))
+  const setWindow = (fromSec: number, toSec: number) => {
+    const w = Math.max(10, toSec - fromSec)
+    setView({ startSec: clampStart(fromSec, w), windowSec: w })
+  }
+  const centerAt = (sec: number) =>
+    setView((v) => ({
+      ...v,
+      startSec: clampStart(sec - v.windowSec / 2, v.windowSec),
+    }))
+
+  const strip = { view, onWindow: setWindow, onCenter: centerAt }
   return (
     <section>
-      <OverviewStrip night={night} channel="pressure" onJump={setJumpSec} />
-      <OverviewStrip night={night} channel="leak" onJump={setJumpSec} />
-      <EventChart night={night} onJump={setJumpSec} />
-      <Waveform night={night} jumpSec={jumpSec} />
+      <OverviewStrip night={night} channel="pressure" {...strip} />
+      <OverviewStrip night={night} channel="leak" {...strip} />
+      <EventChart night={night} {...strip} />
+      <Waveform
+        night={night}
+        view={view}
+        onView={setView}
+        onWindow={setWindow}
+      />
       <Histogram night={night} />
     </section>
   )
 }
 
+/**
+ * Brush behaviour shared by the night strips: drag selects the waveform
+ * window, the active window stays painted as a selection, and a plain
+ * click centres the window. Programmatic setSelect calls pass fire=false,
+ * so only real drags reach the setSelect hook.
+ */
+function stripCursorOpts(
+  view: NightView,
+  onWindow: (fromSec: number, toSec: number) => void,
+  onCenter: (sec: number) => void
+): {
+  cursor: uPlot.Cursor
+  showView: (u: uPlot) => void
+  ready: (u: uPlot) => void
+  setSelect: (u: uPlot) => void
+} {
+  let dragged = false
+  const showView = (u: uPlot) => {
+    const left = u.valToPos(view.startSec, 'x')
+    const w = u.valToPos(view.startSec + view.windowSec, 'x') - left
+    u.setSelect(
+      { left, width: Math.max(w, 1), top: 0, height: u.over.clientHeight },
+      false
+    )
+  }
+  return {
+    cursor: {
+      y: false,
+      drag: { x: true, y: false, setScale: false },
+      sync: nightCursorSync,
+    },
+    showView,
+    ready: (u) => {
+      showView(u)
+      u.over.addEventListener('click', (e) => {
+        if (dragged) {
+          dragged = false
+          return
+        }
+        const rect = u.over.getBoundingClientRect()
+        onCenter(u.posToVal(e.clientX - rect.left, 'x'))
+      })
+    },
+    setSelect: (u) => {
+      if (u.select.width < 2) {
+        showView(u)
+        return
+      }
+      dragged = true
+      onWindow(
+        u.posToVal(u.select.left, 'x'),
+        u.posToVal(u.select.left + u.select.width, 'x')
+      )
+    },
+  }
+}
+
 function OverviewStrip({
   night,
   channel,
-  onJump,
+  view,
+  onWindow,
+  onCenter,
 }: {
   night: Night
   channel: 'pressure' | 'leak'
-  onJump: (sec: number) => void
+  view: NightView
+  onWindow: (fromSec: number, toSec: number) => void
+  onCenter: (sec: number) => void
 }) {
   const ch = channel === 'pressure' ? 'press' : 'leak'
-  const g = nightGrid(night, 1024, ch)
   const scale = channel === 'pressure' ? 0.1 : 1 // press stored in deci
-  const min = Array.from(g.min, (v) => (Number.isNaN(v) ? null : v * scale))
-  const max = Array.from(g.max, (v) => (Number.isNaN(v) ? null : v * scale))
+  const { min, max, xs } = useMemo(() => {
+    const g = nightGrid(night, 1024, ch)
+    return {
+      xs: Array.from(g.xs),
+      min: Array.from(g.min, (v) => (Number.isNaN(v) ? null : v * scale)),
+      max: Array.from(g.max, (v) => (Number.isNaN(v) ? null : v * scale)),
+    }
+  }, [night, ch, scale])
   const unit = channel === 'pressure' ? 'cmH2O' : 'L/min'
+  const brush = stripCursorOpts(view, onWindow, onCenter)
   return (
     <Chart
-      deps={[night.name, channel]}
+      deps={[night.name, channel, view.startSec, view.windowSec]}
       build={(el, width) =>
         new uPlot(
           {
@@ -103,11 +197,7 @@ function OverviewStrip({
               { ...axisTheme(), label: unit, size: 56 },
             ],
             legend: { show: false },
-            cursor: {
-              y: false,
-              drag: { x: false, y: false },
-              sync: nightCursorSync,
-            },
+            cursor: brush.cursor,
             plugins: [
               tooltipPlugin((u, i) => {
                 const x = u.data[0][i]
@@ -118,17 +208,11 @@ function OverviewStrip({
               }),
             ],
             hooks: {
-              ready: [
-                (u) => {
-                  u.over.addEventListener('click', (e) => {
-                    const rect = u.over.getBoundingClientRect()
-                    onJump(u.posToVal(e.clientX - rect.left, 'x'))
-                  })
-                },
-              ],
+              ready: [brush.ready],
+              setSelect: [brush.setSelect],
             },
           },
-          [Array.from(g.xs), min, max],
+          [xs, min, max],
           el
         )
       }
@@ -155,11 +239,16 @@ const LANES: Array<{
  */
 function EventChart({
   night,
-  onJump,
+  view,
+  onWindow,
+  onCenter,
 }: {
   night: Night
-  onJump: (sec: number) => void
+  view: NightView
+  onWindow: (fromSec: number, toSec: number) => void
+  onCenter: (sec: number) => void
 }) {
+  const brush = stripCursorOpts(view, onWindow, onCenter)
   const events: Array<{
     sec: number
     row: number
@@ -186,7 +275,7 @@ function EventChart({
   return (
     <div>
       <Chart
-        deps={[night.name]}
+        deps={[night.name, view.startSec, view.windowSec]}
         build={(el, width) =>
           new uPlot(
             {
@@ -220,11 +309,7 @@ function EventChart({
                 },
               ],
               legend: { show: false },
-              cursor: {
-                y: false,
-                drag: { x: false, y: false },
-                sync: nightCursorSync,
-              },
+              cursor: brush.cursor,
               plugins: [
                 tooltipPlugin((u, i) => {
                   const ev = events[i]
@@ -237,14 +322,8 @@ function EventChart({
                 }),
               ],
               hooks: {
-                ready: [
-                  (u) => {
-                    u.over.addEventListener('click', (e) => {
-                      const rect = u.over.getBoundingClientRect()
-                      onJump(u.posToVal(e.clientX - rect.left, 'x'))
-                    })
-                  },
-                ],
+                ready: [brush.ready],
+                setSelect: [brush.setSelect],
                 draw: [
                   (u) => {
                     const ctx = u.ctx

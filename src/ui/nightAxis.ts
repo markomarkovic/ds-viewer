@@ -48,3 +48,17 @@ export function nightGrid(
   }
   return { xs, min, max }
 }
+
+export type NightView = { startSec: number; windowSec: number }
+
+/** First session start and last session end, in seconds since noon. */
+export function nightBounds(night: Night): {
+  firstStart: number
+  lastEnd: number
+} {
+  const placed = placeSessions(night)
+  const firstStart = placed[0]?.offsetSec ?? 0
+  const last = placed[placed.length - 1]
+  const lastEnd = last ? last.offsetSec + last.session.press.length / HZ : 0
+  return { firstStart, lastEnd }
+}

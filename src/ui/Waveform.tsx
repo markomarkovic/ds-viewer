@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'preact/hooks'
 import uPlot from 'uplot'
 import { minmaxEnvelope } from '../parse/decimate'
 import type { Night } from '../types'
 import { FLOW_LPM, HZ } from '../types'
 import { axisTheme, Chart, nightCursorSync, tooltipPlugin } from './Chart'
-import { clockLabel, placeSessions } from './nightAxis'
+import type { NightView } from './nightAxis'
+import { clockLabel, nightBounds, placeSessions } from './nightAxis'
 
 const PRESETS = [
   ['30s', 30],
@@ -65,31 +65,29 @@ function windowData(
 
 export function Waveform({
   night,
-  jumpSec,
+  view,
+  onView,
+  onWindow,
 }: {
   night: Night
-  jumpSec: number | null
+  view: NightView
+  onView: (v: NightView) => void
+  onWindow: (fromSec: number, toSec: number) => void
 }) {
   const placed = placeSessions(night)
-  const firstStart = placed[0]?.offsetSec ?? 0
-  const lastEnd = placed.length
-    ? placed[placed.length - 1]!.offsetSec +
-      placed[placed.length - 1]!.session.press.length / HZ
-    : 0
-  const [view, setView] = useState({ startSec: firstStart, windowSec: 300 })
-
-  useEffect(() => {
-    if (jumpSec !== null)
-      setView((v) => ({ ...v, startSec: jumpSec - v.windowSec / 2 }))
-  }, [jumpSec])
+  const { firstStart, lastEnd } = nightBounds(night)
 
   const clampStart = (s: number, w: number) =>
     Math.min(Math.max(s, firstStart), Math.max(firstStart, lastEnd - w))
+  const setView = (v: NightView) => onView(v)
   const page = (dir: -1 | 1) =>
-    setView((v) => ({
-      ...v,
-      startSec: clampStart(v.startSec + dir * v.windowSec, v.windowSec),
-    }))
+    setView({
+      ...view,
+      startSec: clampStart(
+        view.startSec + dir * view.windowSec,
+        view.windowSec
+      ),
+    })
 
   const apneas = placed.flatMap(({ session, offsetSec }) =>
     session.events
@@ -106,10 +104,10 @@ export function Waveform({
               key={label}
               class={view.windowSec === sec ? '' : 'outline'}
               onClick={() =>
-                setView((v) => ({
+                setView({
                   windowSec: sec,
-                  startSec: clampStart(v.startSec, sec),
-                }))
+                  startSec: clampStart(view.startSec, sec),
+                })
               }
             >
               {label}
@@ -130,10 +128,10 @@ export function Waveform({
           <button
             class="outline"
             onClick={() =>
-              setView((v) => ({
-                ...v,
-                startSec: clampStart(lastEnd - v.windowSec, v.windowSec),
-              }))
+              setView({
+                ...view,
+                startSec: clampStart(lastEnd - view.windowSec, view.windowSec),
+              })
             }
           >
             End
@@ -144,8 +142,20 @@ export function Waveform({
           {clockLabel(view.startSec + view.windowSec)}
         </small>
       </div>
-      <WaveChart night={night} view={view} channel="flow" apneas={apneas} />
-      <WaveChart night={night} view={view} channel="press" apneas={apneas} />
+      <WaveChart
+        night={night}
+        view={view}
+        channel="flow"
+        apneas={apneas}
+        onWindow={onWindow}
+      />
+      <WaveChart
+        night={night}
+        view={view}
+        channel="press"
+        apneas={apneas}
+        onWindow={onWindow}
+      />
     </section>
   )
 }
@@ -181,11 +191,13 @@ function WaveChart({
   view,
   channel,
   apneas,
+  onWindow,
 }: {
   night: Night
-  view: { startSec: number; windowSec: number }
+  view: NightView
   channel: 'press' | 'flow'
   apneas: number[]
+  onWindow: (fromSec: number, toSec: number) => void
 }) {
   const c = CHANNELS[channel]
   const isFlow = channel === 'flow'
@@ -242,23 +254,19 @@ function WaveChart({
             legend: { show: false },
             cursor: {
               y: false,
-              drag: { x: false, y: false },
+              drag: { x: true, y: false, setScale: false },
               sync: nightCursorSync,
             },
-            plugins: [
-              tooltipPlugin((u, i) => {
-                const x = u.data[0][i]
-                const lo = u.data[1]?.[i]
-                const hi = u.data[2]?.[i]
-                if (x == null || lo == null) return null
-                const span =
-                  hi == null || Math.abs(hi - lo) < 0.05
-                    ? lo.toFixed(1)
-                    : `${lo.toFixed(1)}\u2013${hi.toFixed(1)}`
-                return `${clockLabelS(x)}\n${span} ${c.unit}`
-              }),
-            ],
             hooks: {
+              setSelect: [
+                (u) => {
+                  if (u.select.width < 2) return
+                  const from = u.posToVal(u.select.left, 'x')
+                  const to = u.posToVal(u.select.left + u.select.width, 'x')
+                  u.setSelect({ left: 0, width: 0, top: 0, height: 0 }, false)
+                  onWindow(from, to)
+                },
+              ],
               draw: [
                 (u) => {
                   const ctx = u.ctx
@@ -291,6 +299,19 @@ function WaveChart({
                 },
               ],
             },
+            plugins: [
+              tooltipPlugin((u, i) => {
+                const x = u.data[0][i]
+                const lo = u.data[1]?.[i]
+                const hi = u.data[2]?.[i]
+                if (x == null || lo == null) return null
+                const span =
+                  hi == null || Math.abs(hi - lo) < 0.05
+                    ? lo.toFixed(1)
+                    : `${lo.toFixed(1)}\u2013${hi.toFixed(1)}`
+                return `${clockLabelS(x)}\n${span} ${c.unit}`
+              }),
+            ],
           },
           [d.xs, d.lo, d.hi] as uPlot.AlignedData,
           el
