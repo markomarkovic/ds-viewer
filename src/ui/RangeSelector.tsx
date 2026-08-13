@@ -86,9 +86,42 @@ export function RangeSelector({
         />
       </div>
       <Chart
-        deps={[nights]}
-        build={(el, width) =>
-          new uPlot(
+        deps={[nights, range.from, range.to]}
+        build={(el, width) => {
+          // Paint the active range as a persistent selection rectangle, so
+          // the strip always shows what presets/date inputs/brush chose.
+          const showRange = (u: uPlot) => {
+            const xmin = u.scales['x']?.min
+            const xmax = u.scales['x']?.max
+            if (
+              xmin == null ||
+              xmax == null ||
+              (range.from == null && range.to == null)
+            ) {
+              u.setSelect({ left: 0, width: 0, top: 0, height: 0 }, false)
+              return
+            }
+            const fromS = Math.max(
+              range.from != null ? range.from / 1000 : xmin,
+              xmin
+            )
+            const toS = Math.min(
+              range.to != null ? range.to / 1000 : xmax,
+              xmax
+            )
+            const left = u.valToPos(fromS, 'x')
+            const w = u.valToPos(toS, 'x') - left
+            u.setSelect(
+              {
+                left,
+                width: Math.max(w, 0),
+                top: 0,
+                height: u.over.clientHeight,
+              },
+              false
+            )
+          }
+          return new uPlot(
             {
               width,
               height: 64,
@@ -110,14 +143,17 @@ export function RangeSelector({
                 sync: dateCursorSync,
               },
               hooks: {
+                ready: [showRange],
                 setSelect: [
                   (u) => {
-                    if (u.select.width < 2) return
+                    if (u.select.width < 2) {
+                      showRange(u) // stray click: restore the active range
+                      return
+                    }
                     const from = u.posToVal(u.select.left, 'x') * 1000
                     const to =
                       u.posToVal(u.select.left + u.select.width, 'x') * 1000
                     onRange({ from, to })
-                    u.setSelect({ left: 0, width: 0, top: 0, height: 0 }, false)
                   },
                 ],
               },
@@ -125,7 +161,7 @@ export function RangeSelector({
             [xs, ys],
             el
           )
-        }
+        }}
       />
     </section>
   )

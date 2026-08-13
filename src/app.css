@@ -73,6 +73,12 @@ header hgroup > * {
   margin-bottom: 0;
 }
 
+/* Brush/selection rectangle: uPlot's default rgba(0,0,0,.07) is invisible
+   on dark backgrounds; tint with the theme primary instead */
+.u-select {
+  background: color-mix(in srgb, var(--pico-primary) 22%, transparent);
+}
+
 /* Floating cursor tooltip inside uPlot's .u-over layer */
 .u-tooltip {
   position: absolute;
