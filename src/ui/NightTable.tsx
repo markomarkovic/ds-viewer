@@ -2,13 +2,28 @@ import { useState } from 'preact/hooks'
 import type { Night } from '../types'
 import { cmH2O, PARAM, WORKMODE } from '../types'
 
-type SortKey = 'date' | 'hours' | 'p95' | 'ahi' | 'leak'
+type SortKey =
+  | 'date'
+  | 'hours'
+  | 'avg'
+  | 'p90'
+  | 'p95'
+  | 'max'
+  | 'ahi'
+  | 'apnea'
+  | 'leak'
+  | 'mode'
 const getters: Record<SortKey, (n: Night) => number> = {
   date: (n) => n.date.getTime(),
   hours: (n) => n.hours,
+  avg: (n) => n.press.avg,
+  p90: (n) => n.press.p90,
   p95: (n) => n.press.p95,
+  max: (n) => n.press.max,
   ahi: (n) => n.ahi,
+  apnea: (n) => n.events.apnea,
   leak: (n) => n.leakMedian,
+  mode: (n) => n.sessions[0]?.params.get(PARAM.WorkMode) ?? -1,
 }
 
 export function NightTable({
@@ -47,14 +62,14 @@ export function NightTable({
         <tr>
           {header('date', 'date')}
           {header('hours', 'duration')}
-          <th>avg</th>
-          <th>P90</th>
+          {header('avg', 'avg')}
+          {header('p90', 'P90')}
           {header('p95', 'P95')}
-          <th>max</th>
+          {header('max', 'max')}
           {header('ahi', 'AHI')}
-          <th>apnea</th>
+          {header('apnea', 'apnea')}
           {header('leak', 'leak')}
-          <th>mode</th>
+          {header('mode', 'mode')}
           <th></th>
         </tr>
       </thead>
