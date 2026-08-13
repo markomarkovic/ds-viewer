@@ -113,10 +113,7 @@ export function App() {
           />
         )}
       </header>
-      <main
-        class="container"
-        style={dragOver ? 'outline: 3px dashed var(--pico-primary)' : ''}
-      >
+      <main class="container">
         {state.notices.map((n) => (
           <article key={n.id} role="alert" class="notice">
             <span>{n.text}</span>
@@ -130,7 +127,7 @@ export function App() {
           </article>
         ))}
         {state.nights.length === 0 && state.pending === 0 ? (
-          <article style="text-align:center; padding: 4rem">
+          <article class={dragOver ? 'dropzone drag-over' : 'dropzone'}>
             <h2>Drop .ds1 files or a folder here</h2>
             <p>Nothing is uploaded — parsing happens entirely in this page.</p>
           </article>
@@ -208,12 +205,16 @@ function FilePickers({
         <li>
           <hgroup>
             <h3>ds-viewer</h3>
-            {(nights > 0 || pending > 0) && (
-              <p>
-                {nights > 0 && `${nights} nights loaded`}
-                {pending > 0 && ` · parsing ${pending}…`}
-              </p>
-            )}
+            <p>
+              {nights > 0 || pending > 0 ? (
+                <>
+                  {nights > 0 && `${nights} nights loaded`}
+                  {pending > 0 && ` · parsing ${pending}…`}
+                </>
+              ) : (
+                'in-browser viewer for DreamSleep .ds1 CPAP logs'
+              )}
+            </p>
           </hgroup>
         </li>
       </ul>

@@ -57,6 +57,21 @@ nav [role='group'] {
   white-space: nowrap;
 }
 
+/* Drop zone: a rounded dashed card; the dash thickens and tints while a
+   drag hovers the page. Scoped to the card so nothing else lights up. */
+.dropzone {
+  text-align: center;
+  padding-block: 4rem;
+  border: 2px dashed var(--pico-muted-border-color);
+  border-radius: 1rem;
+  box-shadow: none;
+}
+
+.dropzone.drag-over {
+  border: 4px dashed var(--pico-primary);
+  background: color-mix(in srgb, var(--pico-primary) 8%, transparent);
+}
+
 /* Notices: text left, close icon right */
 .notice {
   display: flex;
