@@ -45,45 +45,46 @@ export function RangeSelector({
   const ys = asc.map((n) => n.hours)
   return (
     <section>
-      <div role="group">
-        <button class="outline" onClick={() => preset(7)}>
-          7d
-        </button>
-        <button class="outline" onClick={() => preset(30)}>
-          30d
-        </button>
-        <button class="outline" onClick={() => preset(90)}>
-          90d
-        </button>
-        <button class="outline" onClick={() => preset(null)}>
-          all
-        </button>
-        <input
-          type="date"
-          value={msToDateInput(range.from)}
-          onChange={(e) =>
-            onRange({
-              ...range,
-              from: dateInputToMs(
-                (e.currentTarget as HTMLInputElement).value,
-                'from'
-              ),
-            })
-          }
-        />
-        <input
-          type="date"
-          value={msToDateInput(range.to)}
-          onChange={(e) =>
-            onRange({
-              ...range,
-              to: dateInputToMs(
-                (e.currentTarget as HTMLInputElement).value,
-                'to'
-              ),
-            })
-          }
-        />
+      <div class="toolbar">
+        <div role="group">
+          <button class="outline" onClick={() => preset(7)}>
+            7d
+          </button>
+          <button class="outline" onClick={() => preset(30)}>
+            30d
+          </button>
+          <button class="outline" onClick={() => preset(null)}>
+            all
+          </button>
+        </div>
+        <div role="group">
+          <input
+            type="date"
+            value={msToDateInput(range.from)}
+            onChange={(e) =>
+              onRange({
+                ...range,
+                from: dateInputToMs(
+                  (e.currentTarget as HTMLInputElement).value,
+                  'from'
+                ),
+              })
+            }
+          />
+          <input
+            type="date"
+            value={msToDateInput(range.to)}
+            onChange={(e) =>
+              onRange({
+                ...range,
+                to: dateInputToMs(
+                  (e.currentTarget as HTMLInputElement).value,
+                  'to'
+                ),
+              })
+            }
+          />
+        </div>
       </div>
       <Chart
         deps={[nights, range.from, range.to]}

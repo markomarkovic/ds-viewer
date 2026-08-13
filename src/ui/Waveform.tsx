@@ -89,6 +89,10 @@ export function Waveform({
       ),
     })
 
+  const EPS = 0.5
+  const atStart = view.startSec <= firstStart + EPS
+  const atEnd = view.startSec + view.windowSec >= lastEnd - EPS
+
   const apneas = placed.flatMap(({ session, offsetSec }) =>
     session.events
       .filter((e) => e.kind === 'APNEA')
@@ -113,20 +117,33 @@ export function Waveform({
               {label}
             </button>
           ))}
+        </div>
+        <button class="outline range-label" disabled>
+          {clockLabel(view.startSec)} –{' '}
+          {clockLabel(view.startSec + view.windowSec)}
+        </button>
+        <div role="group">
           <button
             class="outline"
-            onClick={() => setView({ startSec: firstStart, windowSec: 300 })}
+            disabled={atStart}
+            onClick={() =>
+              setView({
+                ...view,
+                startSec: clampStart(firstStart, view.windowSec),
+              })
+            }
           >
-            Home
+            First
           </button>
-          <button class="outline" onClick={() => page(-1)}>
-            ◀ Page
+          <button class="outline" disabled={atStart} onClick={() => page(-1)}>
+            Previous
           </button>
-          <button class="outline" onClick={() => page(1)}>
-            Page ▶
+          <button class="outline" disabled={atEnd} onClick={() => page(1)}>
+            Next
           </button>
           <button
             class="outline"
+            disabled={atEnd}
             onClick={() =>
               setView({
                 ...view,
@@ -134,13 +151,9 @@ export function Waveform({
               })
             }
           >
-            End
+            Last
           </button>
         </div>
-        <small class="range-label">
-          {clockLabel(view.startSec)} –{' '}
-          {clockLabel(view.startSec + view.windowSec)}
-        </small>
       </div>
       <WaveChart
         night={night}
