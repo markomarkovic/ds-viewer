@@ -1,12 +1,160 @@
+import { useEffect, useMemo, useReducer, useRef, useState } from 'preact/hooks'
+import ParseWorker from '../parse/worker?worker&inline'
+import { filesFromDataTransfer, gather } from '../load/dropzone'
+import { initialState, reducer, visibleNights } from '../state'
+import type { WorkerResponse } from '../types'
+import { NightTable } from './NightTable'
+import { Summary } from './Summary'
+
 export function App() {
+  const [state, dispatch] = useReducer(reducer, initialState)
+  const workerRef = useRef<Worker | null>(null)
+  const [dragOver, setDragOver] = useState(false)
+  const nextId = useRef(1)
+
+  useEffect(() => {
+    const w = new ParseWorker()
+    w.onmessage = (e: MessageEvent<WorkerResponse>) => {
+      const res = e.data
+      if (res.ok) dispatch({ type: 'night-loaded', night: res.night })
+      else dispatch({ type: 'file-failed', name: res.name, error: res.error })
+    }
+    workerRef.current = w
+    return () => w.terminate()
+  }, [])
+
+  const ingest = async (files: File[]) => {
+    const { accepted, refused, skippedCount } = gather(files)
+    dispatch({
+      type: 'ingest-started',
+      accepted: accepted.length,
+      skippedCount,
+      refused,
+    })
+    for (const f of accepted) {
+      const buf = await f.arrayBuffer()
+      workerRef.current?.postMessage(
+        { id: nextId.current++, name: f.name, buf },
+        [buf]
+      )
+    }
+  }
+
+  useEffect(() => {
+    const onDrop = (e: DragEvent) => {
+      e.preventDefault()
+      setDragOver(false)
+      if (e.dataTransfer)
+        void filesFromDataTransfer(e.dataTransfer.items).then(ingest)
+    }
+    const onDragOver = (e: DragEvent) => {
+      e.preventDefault()
+      setDragOver(true)
+    }
+    const onDragLeave = () => setDragOver(false)
+    document.addEventListener('drop', onDrop)
+    document.addEventListener('dragover', onDragOver)
+    document.addEventListener('dragleave', onDragLeave)
+    return () => {
+      document.removeEventListener('drop', onDrop)
+      document.removeEventListener('dragover', onDragOver)
+      document.removeEventListener('dragleave', onDragLeave)
+    }
+  }, [])
+
+  const visible = useMemo(() => visibleNights(state), [state])
+
   return (
-    <main class="container">
-      <h1>ds-viewer</h1>
+    <main
+      class="container"
+      style={dragOver ? 'outline: 3px dashed var(--pico-primary)' : ''}
+    >
+      <FilePickers
+        onFiles={ingest}
+        pending={state.pending}
+        nights={state.nights.length}
+      />
+      {state.notices.map((n) => (
+        <article key={n.id} role="alert">
+          {n.text}{' '}
+          <a
+            href="#"
+            onClick={(e) => {
+              e.preventDefault()
+              dispatch({ type: 'dismiss-notice', id: n.id })
+            }}
+          >
+            dismiss
+          </a>
+        </article>
+      ))}
+      {state.nights.length === 0 && state.pending === 0 ? (
+        <article style="text-align:center; padding: 4rem">
+          <h2>Drop .ds1 files or a folder here</h2>
+          <p>Nothing is uploaded — parsing happens entirely in this page.</p>
+        </article>
+      ) : (
+        <>
+          <Summary nights={visible} />
+          <NightTable
+            nights={visible}
+            onSelect={(name) => dispatch({ type: 'select-night', name })}
+          />
+        </>
+      )}
       <footer>
         <small>
-          v{__APP_VERSION__} · {__GIT_COMMIT__}
+          ds-viewer v{__APP_VERSION__} · {__GIT_COMMIT__} · timestamps are
+          device-clock and nominal; durations are exact
         </small>
       </footer>
     </main>
+  )
+}
+
+function FilePickers({
+  onFiles,
+  pending,
+  nights,
+}: {
+  onFiles: (files: File[]) => void
+  pending: number
+  nights: number
+}) {
+  const pick = (e: Event) => {
+    const input = e.currentTarget as HTMLInputElement
+    if (input.files) onFiles(Array.from(input.files))
+    input.value = ''
+  }
+  return (
+    <nav>
+      <ul>
+        <li>
+          <strong>ds-viewer</strong>{' '}
+          {nights > 0 && <small>{nights} nights loaded</small>}
+          {pending > 0 && <small> · parsing {pending}…</small>}
+        </li>
+      </ul>
+      <ul>
+        <li>
+          <label role="button" class="secondary">
+            + files
+            <input type="file" multiple accept=".ds1" hidden onChange={pick} />
+          </label>
+        </li>
+        <li>
+          <label role="button" class="secondary">
+            + folder
+            {/* webkitdirectory is non-standard but universal */}
+            <input
+              type="file"
+              hidden
+              {...{ webkitdirectory: true }}
+              onChange={pick}
+            />
+          </label>
+        </li>
+      </ul>
+    </nav>
   )
 }
