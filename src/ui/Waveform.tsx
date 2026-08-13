@@ -3,7 +3,7 @@ import uPlot from 'uplot'
 import { minmaxEnvelope } from '../parse/decimate'
 import type { Night } from '../types'
 import { FLOW_LPM, HZ } from '../types'
-import { axisTheme, Chart } from './Chart'
+import { axisTheme, Chart, nightCursorSync, tooltipPlugin } from './Chart'
 import { clockLabel, placeSessions } from './nightAxis'
 
 const PRESETS = [
@@ -12,6 +12,13 @@ const PRESETS = [
   ['2m', 120],
   ['5m', 300],
 ] as const
+
+const PRESS_COLOR = '#3a7ca5'
+const FLOW_COLOR = '#4c9a52'
+
+/** clockLabel plus seconds, for the waveform's zoom levels */
+const clockLabelS = (sec: number) =>
+  `${clockLabel(sec)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`
 
 type Series = { xs: number[]; lo: (number | null)[]; hi: (number | null)[] }
 
@@ -137,76 +144,141 @@ export function Waveform({
           {clockLabel(view.startSec + view.windowSec)}
         </small>
       </div>
-      <Chart
-        deps={[night.name, view.startSec, view.windowSec]}
-        build={(el, width) => {
-          const p = windowData(
-            night,
-            'press',
-            view.startSec,
-            view.windowSec,
-            width
-          )
-          const f = windowData(
-            night,
-            'flow',
-            view.startSec,
-            view.windowSec,
-            width
-          )
-          return new uPlot(
-            {
-              width,
-              height: 320,
-              scales: {
-                x: {
-                  time: false,
-                  range: [view.startSec, view.startSec + view.windowSec],
-                },
-                p: { range: (_u, _min, max) => [0, Math.max(10, max * 1.1)] },
-                f: { range: (_u, _min, max) => [0, Math.max(30, max * 1.1)] },
+      <WaveChart night={night} view={view} channel="flow" apneas={apneas} />
+      <WaveChart night={night} view={view} channel="press" apneas={apneas} />
+    </section>
+  )
+}
+
+const CHANNELS = {
+  press: {
+    color: PRESS_COLOR,
+    scale: 'p',
+    label: 'pressure cmH2O',
+    unit: 'cmH2O',
+    height: 150,
+    floor: 10,
+    bandAlpha: '44',
+  },
+  flow: {
+    color: FLOW_COLOR,
+    scale: 'f',
+    label: 'flow L/min',
+    unit: 'L/min',
+    height: 220,
+    floor: 30,
+    bandAlpha: '33',
+  },
+} as const
+
+/**
+ * One channel of the waveform. The two instances share a cursor-sync key,
+ * so hovering either chart shows the cursor and tooltip in both at the
+ * same instant.
+ */
+function WaveChart({
+  night,
+  view,
+  channel,
+  apneas,
+}: {
+  night: Night
+  view: { startSec: number; windowSec: number }
+  channel: 'press' | 'flow'
+  apneas: number[]
+}) {
+  const c = CHANNELS[channel]
+  const isFlow = channel === 'flow'
+  return (
+    <Chart
+      deps={[night.name, view.startSec, view.windowSec, channel]}
+      build={(el, width) => {
+        const d = windowData(
+          night,
+          channel,
+          view.startSec,
+          view.windowSec,
+          width
+        )
+        return new uPlot(
+          {
+            width,
+            height: c.height,
+            scales: {
+              x: {
+                time: false,
+                range: [view.startSec, view.startSec + view.windowSec],
               },
-              series: [
-                {},
-                { label: 'press lo', scale: 'p', stroke: '#3a7ca5' },
-                { label: 'press hi', scale: 'p', stroke: '#3a7ca5' },
-                { label: 'flow lo', scale: 'f', stroke: '#4c9a52' },
-                { label: 'flow hi', scale: 'f', stroke: '#4c9a52' },
-              ],
-              bands: [
-                { series: [2, 1], fill: '#3a7ca544' },
-                { series: [4, 3], fill: '#4c9a5233' },
-              ],
-              axes: [
-                {
-                  ...axisTheme(),
-                  values: (_u, splits) => splits.map(clockLabel),
-                },
-                { ...axisTheme(), scale: 'p', label: 'pressure cmH2O' },
-                { ...axisTheme(), scale: 'f', label: 'flow L/min', side: 1 },
-              ],
-              legend: { show: false },
-              cursor: { drag: { x: false, y: false } },
-              hooks: {
-                draw: [
-                  (u) => {
-                    const ctx = u.ctx
-                    ctx.save()
-                    ctx.strokeStyle = '#c33'
-                    ctx.fillStyle = '#c33'
-                    for (const sec of apneas) {
-                      if (
-                        sec < view.startSec ||
-                        sec > view.startSec + view.windowSec
-                      )
-                        continue
-                      const x = u.valToPos(sec, 'x', true)
-                      ctx.setLineDash([2, 3])
-                      ctx.beginPath()
-                      ctx.moveTo(x, u.bbox.top)
-                      ctx.lineTo(x, u.bbox.top + u.bbox.height)
-                      ctx.stroke()
-                      ctx.setLineDash([])
+              [c.scale]: {
+                range: (_u, _min, max) => [0, Math.max(c.floor, max * 1.1)],
+              },
+            },
+            series: [
+              {},
+              {
+                label: 'lo',
+                scale: c.scale,
+                stroke: c.color,
+                // pressure renders vendor-style: area filled down to zero
+                ...(isFlow ? {} : { fill: c.color + '2a' }),
+              },
+              { label: 'hi', scale: c.scale, stroke: c.color },
+            ],
+            bands: [{ series: [2, 1], fill: c.color + c.bandAlpha }],
+            axes: [
+              isFlow
+                ? {
+                    // top chart: keep the grid, hide the duplicate labels
+                    ...axisTheme(),
+                    size: 8,
+                    values: (_u, splits) => splits.map(() => ''),
+                  }
+                : {
+                    ...axisTheme(),
+                    values: (_u, splits) => splits.map(clockLabel),
+                  },
+              { ...axisTheme(), scale: c.scale, label: c.label, size: 56 },
+            ],
+            legend: { show: false },
+            cursor: {
+              y: false,
+              drag: { x: false, y: false },
+              sync: nightCursorSync,
+            },
+            plugins: [
+              tooltipPlugin((u, i) => {
+                const x = u.data[0][i]
+                const lo = u.data[1]?.[i]
+                const hi = u.data[2]?.[i]
+                if (x == null || lo == null) return null
+                const span =
+                  hi == null || Math.abs(hi - lo) < 0.05
+                    ? lo.toFixed(1)
+                    : `${lo.toFixed(1)}\u2013${hi.toFixed(1)}`
+                return `${clockLabelS(x)}\n${span} ${c.unit}`
+              }),
+            ],
+            hooks: {
+              draw: [
+                (u) => {
+                  const ctx = u.ctx
+                  ctx.save()
+                  ctx.strokeStyle = '#c33'
+                  ctx.fillStyle = '#c33'
+                  for (const sec of apneas) {
+                    if (
+                      sec < view.startSec ||
+                      sec > view.startSec + view.windowSec
+                    )
+                      continue
+                    const x = u.valToPos(sec, 'x', true)
+                    ctx.setLineDash([2, 3])
+                    ctx.beginPath()
+                    ctx.moveTo(x, u.bbox.top)
+                    ctx.lineTo(x, u.bbox.top + u.bbox.height)
+                    ctx.stroke()
+                    ctx.setLineDash([])
+                    if (isFlow) {
                       ctx.beginPath()
                       ctx.moveTo(x - 4, u.bbox.top + 10)
                       ctx.lineTo(x + 4, u.bbox.top + 10)
@@ -214,17 +286,16 @@ export function Waveform({
                       ctx.closePath()
                       ctx.fill()
                     }
-                    ctx.restore()
-                  },
-                ],
-              },
+                  }
+                  ctx.restore()
+                },
+              ],
             },
-            // xs must be a plain aligned array; lo/hi pairs per channel
-            [p.xs, p.lo, p.hi, f.lo, f.hi] as uPlot.AlignedData,
-            el
-          )
-        }}
-      />
-    </section>
+          },
+          [d.xs, d.lo, d.hi] as uPlot.AlignedData,
+          el
+        )
+      }}
+    />
   )
 }
