@@ -1,0 +1,178 @@
+/* Outline buttons: neutral borders matching form inputs, not primary blue */
+button.outline,
+[role='button'].outline {
+  border-color: var(--pico-form-element-border-color);
+  color: var(--pico-color);
+}
+
+button.outline:is(:hover, :active, :focus),
+[role='button'].outline:is(:hover, :active, :focus) {
+  border-color: var(--pico-primary);
+  color: var(--pico-primary);
+  background: transparent;
+}
+
+/* Date inputs joined into a button group: same transparent background as
+   the outline buttons beside them */
+[role='group'] input[type='date'] {
+  background-color: transparent;
+}
+
+/* Button groups inside navs carry their own spacing */
+nav [role='group'] {
+  margin-bottom: 0;
+  width: auto;
+}
+
+/* Chart toolbar: presets | time range | paging across the full width,
+   collapsing to three stacked rows on narrow displays */
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: var(--pico-spacing);
+}
+
+.toolbar [role='group'] {
+  width: auto;
+  margin-bottom: 0;
+}
+
+.toolbar button.range-label {
+  margin-bottom: 0;
+  width: auto;
+}
+
+@media (max-width: 1279px) {
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+.range-label {
+  color: var(--pico-muted-color);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Drop zone: a rounded dashed card; the dash thickens and tints while a
+   drag hovers the page. Scoped to the card so nothing else lights up. */
+.dropzone {
+  text-align: center;
+  padding-block: 4rem;
+  border: 2px dashed var(--pico-muted-border-color);
+  border-radius: 1rem;
+  box-shadow: none;
+}
+
+.dropzone.drag-over {
+  border: 4px dashed var(--pico-primary);
+  background: color-mix(in srgb, var(--pico-primary) 8%, transparent);
+}
+
+/* Notices: text left, close icon right */
+.notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.notice-close {
+  width: auto;
+  margin: 0;
+  padding: 0 0.25rem;
+  background: none;
+  border: none;
+  box-shadow: none;
+  color: var(--pico-muted-color);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.notice-close:is(:hover, :focus) {
+  color: var(--pico-color);
+  background: none;
+}
+
+/* Night table: numeric columns (duration..leak, columns 2-9) right-aligned
+   with tabular digits so magnitudes line up down the rows */
+table.nights {
+  font-variant-numeric: tabular-nums;
+}
+
+table.nights :is(th, td):nth-child(n + 2):nth-child(-n + 9) {
+  text-align: right;
+}
+
+/* ---- Vertical rhythm ----
+   Major regions breathe; tightly-coupled elements stay glued. On the list
+   page every region (KPI row, range selector, each trend chart, table) is
+   a direct child of main; on the detail page the .night section owns its
+   regions; the waveform toolbar + chart pair is one unit. */
+main > * + * {
+  margin-top: 1.75rem;
+}
+
+.night > * + * {
+  margin-top: 1.75rem;
+}
+
+.waveform > * + * {
+  margin-top: 0.35rem;
+}
+
+main > footer {
+  margin-top: 3rem;
+}
+
+/* Header bar: compact hgroup titles, no stacked margins */
+header.container {
+  padding-block: calc(var(--pico-spacing) * 0.5);
+}
+
+header hgroup,
+header hgroup > * {
+  margin-bottom: 0;
+}
+
+/* Brush/selection rectangle: uPlot's default rgba(0,0,0,.07) is invisible
+   on dark backgrounds; tint with the theme primary instead */
+.u-select {
+  background: color-mix(in srgb, var(--pico-primary) 22%, transparent);
+}
+
+/* Floating cursor tooltip inside uPlot's .u-over layer */
+.u-tooltip {
+  position: absolute;
+  z-index: 2;
+  display: none;
+  pointer-events: none;
+  padding: 0.15rem 0.5rem;
+  border: 1px solid var(--pico-muted-border-color);
+  border-radius: var(--pico-border-radius);
+  background: var(--pico-card-background-color);
+  color: var(--pico-color);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  white-space: pre-line;
+}
+
+/* Inline info marker hosting a Pico data-tooltip, sits in a title line */
+.info-tip {
+  color: var(--pico-muted-color);
+  font-weight: normal;
+  cursor: help;
+  border-bottom: none;
+}
+
+/* Pico tooltips are single-line by default; info bubbles carry prose */
+.info-tip[data-tooltip]::before {
+  white-space: normal;
+  width: max-content;
+  max-width: min(22rem, 80vw);
+  text-align: left;
+}
