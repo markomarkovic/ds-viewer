@@ -5,6 +5,27 @@ import { Chart } from './Chart'
 
 const DAY = 86400_000
 
+export function msToDateInput(ms: number | null): string {
+  if (ms === null) return ''
+  const d = new Date(ms)
+  const y = String(d.getFullYear()).padStart(4, '0')
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+export function dateInputToMs(v: string, edge: 'from' | 'to'): number | null {
+  if (!v) return null
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v)
+  if (!m) return null
+  const y = Number(m[1])
+  const mo = Number(m[2])
+  const d = Number(m[3])
+  return edge === 'from'
+    ? new Date(y, mo - 1, d).getTime()
+    : new Date(y, mo - 1, d, 23, 59, 59, 999).getTime()
+}
+
 export function RangeSelector({
   nights,
   range,
@@ -20,9 +41,6 @@ export function RangeSelector({
     if (days === null || !last) return onRange({ from: null, to: null })
     onRange({ from: last.date.getTime() - days * DAY, to: null })
   }
-  const toInput = (ms: number | null) =>
-    ms === null ? '' : new Date(ms).toISOString().slice(0, 10)
-  const fromInput = (v: string) => (v ? new Date(v).getTime() : null)
   const xs = asc.map((n) => n.date.getTime() / 1000)
   const ys = asc.map((n) => n.hours)
   return (
@@ -42,21 +60,27 @@ export function RangeSelector({
         </button>
         <input
           type="date"
-          value={toInput(range.from)}
+          value={msToDateInput(range.from)}
           onChange={(e) =>
             onRange({
               ...range,
-              from: fromInput((e.currentTarget as HTMLInputElement).value),
+              from: dateInputToMs(
+                (e.currentTarget as HTMLInputElement).value,
+                'from'
+              ),
             })
           }
         />
         <input
           type="date"
-          value={toInput(range.to)}
+          value={msToDateInput(range.to)}
           onChange={(e) =>
             onRange({
               ...range,
-              to: fromInput((e.currentTarget as HTMLInputElement).value),
+              to: dateInputToMs(
+                (e.currentTarget as HTMLInputElement).value,
+                'to'
+              ),
             })
           }
         />
