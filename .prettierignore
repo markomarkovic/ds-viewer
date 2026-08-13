@@ -1,0 +1,6 @@
+pnpm-lock.yaml
+pnpm-workspace.yaml
+
+# Build output: dist/index.html is one ~300 KB file with everything inlined.
+# Formatting it is slow and pointless.
+dist/

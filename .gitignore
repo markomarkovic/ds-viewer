@@ -9,11 +9,31 @@
 *.csv
 csv/
 
+# Exception: golden files for the test suite.  Only synthetic data belongs
+# here - never a real recording or anything derived from one.
+!src/test/fixtures/*.csv
+!src/test/fixtures/*.ds1
+
 # Vendor software.  The README promises this repository ships no vendor
 # binaries; this keeps that true by accident as well as on purpose.
 *.exe
 *.dll
 *.pdb
+
+# Node / Vite / pnpm.  pnpm-lock.yaml is deliberately NOT ignored - it is
+# what makes the build reproducible, alongside the exact version pins.
+node_modules/
+dist/
+dist-ssr/
+.vite/
+.pnpm-store/
+*.local
+npm-debug.log*
+pnpm-debug.log*
+
+# mise: the committed mise.toml pins the toolchain; local overrides do not belong in git.
+mise.local.toml
+.mise.local.toml
 
 # Python
 __pycache__/
