@@ -1,5 +1,11 @@
 # ds-viewer: single-file HTML viewer for `.ds1` CPAP logs
 
+> **Historical design document.** This describes the viewer as designed on
+> 2026-08-13 and was fully implemented; the UI has since evolved (tabs replaced
+> by stacked synced strips, toolbar layout, hash navigation, localized axes).
+> The README describes the current behaviour; this file is kept as the record
+> of the original design and its rationale.
+
 Design, 2026-08-13.
 
 ## Goal

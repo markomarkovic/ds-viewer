@@ -1,18 +1,22 @@
 # ds-viewer
 
-A decoder for `.ds1` sleep-therapy logs written by CPAP machines that ship with the
-**DreamSleep** / **Records** PC software, plus a complete description of the file format.
+A single-file HTML viewer and a Python decoder for `.ds1` sleep-therapy logs written by CPAP
+machines that ship with the **DreamSleep** / **Records** PC software, plus a complete
+description of the file format.
 
 Developed and validated against a **DS-6 AUTO CPAP**.
 
-The vendor software is Windows-only and shows you summary tables. This reads the same SD-card
-files anywhere Python runs and gives you the underlying 10 Hz pressure and flow waveforms as CSV,
-so you can plot, analyse, or archive your own data with whatever tools you like.
+The vendor software is Windows-only and shows you summary tables. This repo reads the same
+SD-card files anywhere: the viewer is one HTML file that parses everything in your browser and
+charts the 10 Hz pressure and flow waveforms; the CLI turns the same files into CSV for
+whatever analysis you like.
 
 No vendor code or binaries are included or required. See [Legal](#legal).
 
 ## Status
 
+- **Viewer** — `make build` emits `dist/index.html`, a self-contained browser app (see
+  [Viewer](#viewer)).
 - **`ds1.py`** — decoder, session summariser and CSV exporter. Works, validated (see below).
 - **[`DS1_FORMAT.md`](DS1_FORMAT.md)** — the format specification.
 
@@ -46,28 +50,38 @@ Summary output:
 
 ## Viewer
 
-A single-file HTML viewer lives in this repo alongside the CLI. Build it with:
+Build it yourself, or grab `ds-viewer.html` from a tagged release:
 
 ```sh
 make setup   # once: toolchain via mise, deps via pnpm
 make build   # emits dist/index.html
 ```
 
-Open `dist/index.html` in any browser (no server needed) and drop your `.ds1`
-files or the whole SD-card folder onto the page. Parsing happens entirely
-in-browser; nothing is uploaded, nothing is stored between reloads.
+Open the file in any browser — `file://` works, no server needed — and drop your `.ds1`
+files or the whole SD-card folder onto the page. Parsing happens entirely in-browser;
+nothing is uploaded, nothing is stored between reloads.
 
-It shows night-over-night trends (duration, P95, AHI, leak) with a visual
-date-range selector, a sortable table, and a per-night drill-down: pressure
-envelope across the night, time-in-pressure histogram with P90/P95, and a
-zoomable 10 Hz pressure/flow waveform with the device's apnea markers.
+**Overview page:** a KPI row (with an AHI explainer), trend charts for duration, P95, AHI
+and median leak, and a table of nights sortable by every column. The date range is driven
+three ways — presets, date pickers, or brushing the context strip — and the active range
+stays highlighted on the strip. Hovering any chart shows a value tooltip and a cursor
+linked across all of them. Dates follow your browser locale; times are always 24-hour.
+
+**Night page** (each night has its own URL hash, so the browser back button and deep
+links work): pressure, leak and event strips span the noon-to-noon day; brush any of
+them to choose the waveform window, or click to centre it. Below, the flow and pressure
+waveforms share a linked cursor with the strips, with window presets (30 s to 5 m),
+First/Previous/Next/Last paging, brush-to-zoom, and the device's apnea markers drawn on
+the traces. A time-in-pressure histogram with the cumulative curve and P90/P95 markers
+closes the page. Dark mode follows the browser and the charts retint live.
 
 The displayed percentiles use the standard time-weighted definition and will
 not match the vendor software's P90/P95 (see DS1_FORMAT.md). Apnea counts are
 the device's own markers, not the vendor software's re-scored events.
 
-Development: `make dev`, `make test`, `make typecheck`. The parser is verified
-against `ds1.py` row-for-row with `make test-diff DS1_DIR=<your data dir>`.
+Development: `make dev`, `make test`, `make typecheck`, `make lint`, `make format`. The
+parser is verified against `ds1.py` row-for-row with `make test-diff DS1_DIR=<data dir>`.
+Releases are built by CI on `v*` tags, which attach the single file and publish Pages.
 
 ## Export layout
 
