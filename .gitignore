@@ -1,0 +1,32 @@
+# Recordings.  These are personal health data - never commit them.
+*.ds1
+*.ds2
+*.ds3
+*.ds4
+
+# Decoded output.  Roughly 10 MB per recorded hour, and it is health data too.
+# Deliberately broad: use `git add -f` if you ever want to commit a sample.
+*.csv
+csv/
+
+# Vendor software.  The README promises this repository ships no vendor
+# binaries; this keeps that true by accident as well as on purpose.
+*.exe
+*.dll
+*.pdb
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# Editors and OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
