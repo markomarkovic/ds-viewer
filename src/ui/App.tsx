@@ -76,6 +76,22 @@ export function App() {
     }
   }, [])
 
+  // The open night lives in the URL hash, so browser back/forward work.
+  // The reducer's `selected` only mirrors it.
+  useEffect(() => {
+    const applyHash = () =>
+      dispatch({
+        type: 'select-night',
+        name:
+          location.hash.length > 1
+            ? decodeURIComponent(location.hash.slice(1))
+            : null,
+      })
+    applyHash()
+    window.addEventListener('hashchange', applyHash)
+    return () => window.removeEventListener('hashchange', applyHash)
+  }, [])
+
   const visible = useMemo(() => visibleNights(state), [state])
   const selectedNight = state.selected
     ? state.nights.find((n) => n.name === state.selected)
@@ -87,7 +103,7 @@ export function App() {
         {selectedNight ? (
           <NightHeader
             night={selectedNight}
-            onBack={() => dispatch({ type: 'select-night', name: null })}
+            onBack={() => (location.hash = '')}
           />
         ) : (
           <FilePickers
@@ -154,7 +170,7 @@ export function App() {
             />
             <NightTable
               nights={visible}
-              onSelect={(name) => dispatch({ type: 'select-night', name })}
+              onSelect={(name) => (location.hash = encodeURIComponent(name))}
             />
           </>
         )}
