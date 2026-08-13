@@ -129,7 +129,7 @@ export function parseDs1(buf: ArrayBuffer, fileName: string): ParseOutcome {
       cur.params.set(paramKey(b1), (b2 << 7) + b3)
     } else if (type === 2) {
       if (!cur) cur = orphanSession()
-      cur.press.push(((b0 & 0x07) << 9) | (b1 << 2) | ((b2 & 0x60) >> 5))
+      cur.press.push(((b0 & 0x07) << 9) + (b1 << 2) + ((b2 & 0x60) >> 5))
       cur.flow.push(((b2 & 0x1f) << 7) + b3)
     } else if (type === 3) {
       if (!cur) cur = orphanSession()

@@ -11,7 +11,7 @@ export const rec = {
   ],
   sample: (pressDeci: number, flowCounts: number) => [
     0x90 | ((pressDeci >> 9) & 0x07),
-    (pressDeci >> 2) & 0xff,
+    (pressDeci >> 2) & 0x7f,
     (((pressDeci & 0x03) << 5) | ((flowCounts >> 7) & 0x1f)) & 0x7f,
     flowCounts & 0x7f,
   ],

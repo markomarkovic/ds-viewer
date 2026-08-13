@@ -4,7 +4,7 @@ import { buildDs1, rec, simpleNight } from './encode'
 test('P_A sample encodes per DecodePA bit layout', () => {
   expect(rec.sample(100, 300)).toEqual([0x90, 25, 0x02, 0x2c])
   // 12-bit maxima round-trip
-  expect(rec.sample(0x0fff, 0x0fff)).toEqual([0x97, 0xff, 0x7f, 0x7f])
+  expect(rec.sample(0x0fff, 0x0fff)).toEqual([0x97, 0x7f, 0x7f, 0x7f])
 })
 
 test('param value splits at 7 bits, not 8', () => {
