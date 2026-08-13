@@ -1,6 +1,6 @@
 import uPlot from 'uplot'
 import type { Night } from '../types'
-import { axisTheme, Chart } from './Chart'
+import { axisTheme, Chart, dateCursorSync, tooltipPlugin } from './Chart'
 
 export function TrendChart({
   title,
@@ -38,7 +38,20 @@ export function TrendChart({
             ],
             axes: [axisTheme(), { ...axisTheme(), size: 44 }],
             legend: { show: false },
-            cursor: { drag: { x: false, y: false } },
+            cursor: {
+              y: false,
+              drag: { x: false, y: false },
+              sync: dateCursorSync,
+            },
+            plugins: [
+              tooltipPlugin((u, i) => {
+                const x = u.data[0][i]
+                const y = u.data[1]?.[i]
+                if (x == null || y == null) return null
+                const day = new Date(x * 1000).toLocaleDateString()
+                return `${day}\n${title}: ${y.toFixed(1)}`
+              }),
+            ],
           },
           [xs, ys],
           el

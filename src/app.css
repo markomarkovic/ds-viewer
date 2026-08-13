@@ -73,6 +73,22 @@ header hgroup > * {
   margin-bottom: 0;
 }
 
+/* Floating cursor tooltip inside uPlot's .u-over layer */
+.u-tooltip {
+  position: absolute;
+  z-index: 2;
+  display: none;
+  pointer-events: none;
+  padding: 0.15rem 0.5rem;
+  border: 1px solid var(--pico-muted-border-color);
+  border-radius: var(--pico-border-radius);
+  background: var(--pico-card-background-color);
+  color: var(--pico-color);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  white-space: pre-line;
+}
+
 /* Inline info marker hosting a Pico data-tooltip, sits in a title line */
 .info-tip {
   color: var(--pico-muted-color);

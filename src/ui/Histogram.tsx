@@ -1,7 +1,7 @@
 import uPlot from 'uplot'
 import type { Night } from '../types'
 import { cmH2O } from '../types'
-import { axisTheme, Chart } from './Chart'
+import { axisTheme, Chart, tooltipPlugin } from './Chart'
 
 export function Histogram({ night }: { night: Night }) {
   // aggregate 0.1-bins into 0.5 cmH2O columns; % of time + cumulative %
@@ -58,7 +58,16 @@ export function Histogram({ night }: { night: Night }) {
                 { ...axisTheme(), scale: '%', label: '%' },
               ],
               legend: { show: false },
-              cursor: { drag: { x: false, y: false } },
+              cursor: { y: false, drag: { x: false, y: false } },
+              plugins: [
+                tooltipPlugin((u, i) => {
+                  const x = u.data[0][i]
+                  const p = u.data[1]?.[i]
+                  const c = u.data[2]?.[i]
+                  if (x == null || p == null || c == null) return null
+                  return `${(x - 0.25).toFixed(1)}–${(x + 0.25).toFixed(1)} cmH2O\n${p.toFixed(1)}% of night · ${c.toFixed(0)}% below`
+                }),
+              ],
               hooks: {
                 draw: [
                   (u) => {
