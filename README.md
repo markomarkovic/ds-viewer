@@ -11,6 +11,8 @@ SD-card files anywhere: the viewer is one HTML file that parses everything in yo
 charts the 10 Hz pressure and flow waveforms; the CLI turns the same files into CSV for
 whatever analysis you like.
 
+**Live viewer: <https://okram.civokram.com/ds-viewer/>** — your files never leave the browser.
+
 No vendor code or binaries are included or required. See [Legal](#legal).
 
 ## Status
@@ -50,7 +52,9 @@ Summary output:
 
 ## Viewer
 
-Build it yourself, or grab `ds-viewer.html` from a tagged release:
+Use it at **<https://okram.civokram.com/ds-viewer/>**, grab `ds-viewer.html` from a
+[release](https://github.com/markomarkovic/ds-viewer/releases) to run offline, or build it
+yourself:
 
 ```sh
 make setup   # once: toolchain via mise, deps via pnpm
