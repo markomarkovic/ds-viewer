@@ -1,0 +1,8 @@
+# Keeps the SHA-pinned actions current: Dependabot understands
+# sha # vN pins and proposes bumps with updated hashes.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
