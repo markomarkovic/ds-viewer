@@ -4,6 +4,7 @@ import { filesFromDataTransfer, gather } from '../load/dropzone'
 import { initialState, reducer, visibleNights } from '../state'
 import type { WorkerResponse } from '../types'
 import { cmH2O } from '../types'
+import { NightDetail } from './NightDetail'
 import { NightTable } from './NightTable'
 import { RangeSelector } from './RangeSelector'
 import { Summary } from './Summary'
@@ -66,6 +67,9 @@ export function App() {
   }, [])
 
   const visible = useMemo(() => visibleNights(state), [state])
+  const selectedNight = state.selected
+    ? state.nights.find((n) => n.name === state.selected)
+    : undefined
 
   return (
     <main
@@ -96,6 +100,11 @@ export function App() {
           <h2>Drop .ds1 files or a folder here</h2>
           <p>Nothing is uploaded — parsing happens entirely in this page.</p>
         </article>
+      ) : selectedNight ? (
+        <NightDetail
+          night={selectedNight}
+          onBack={() => dispatch({ type: 'select-night', name: null })}
+        />
       ) : (
         <>
           <Summary nights={visible} />
