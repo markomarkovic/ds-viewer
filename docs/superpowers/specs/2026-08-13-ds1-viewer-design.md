@@ -215,6 +215,7 @@ type Counts    = Brand<number, 'Counts'>     // raw flow, as stored on disk
 type Lpm       = Brand<number, 'Lpm'>        // Counts * 0.12
 type SampleIdx = Brand<number, 'SampleIdx'>  // 10 Hz index within a session
 type Seconds   = Brand<number, 'Seconds'>    // elapsed within a session
+type ParamKey  = Brand<number, 'ParamKey'>   // PARAM record key byte (see DS1_FORMAT.md)
 
 type Night = {
   name: string                    // filename stem, DDMMYYYY
@@ -271,6 +272,35 @@ drop → recursive File collection
 Results stream back **per file**, so nights appear progressively rather than after all 69.
 Typed arrays cross the boundary by transfer, so there is no copy.
 
+The worker protocol is small and fully typed:
+
+```ts
+type WorkerRequest  = { id: number; name: string; buf: ArrayBuffer }
+type WorkerResponse =
+  | { id: number; ok: true; night: Night }     // buffers in the transfer list
+  | { id: number; ok: false; error: string }
+```
+
+`Night` is structured-cloneable as defined (`Date`, `Map`, typed arrays all clone), so the
+response carries it directly.
+
+**The worker must be inlined.** Under `vite-plugin-singlefile` on a `file://` origin a
+separate worker chunk cannot be fetched, so the app imports it with Vite's
+`?worker&inline` suffix, which embeds the worker as a blob URL inside the single file.
+Without this the core premise fails; it is the one bundling detail that cannot be
+discovered late.
+
+**Night identity:** nights are keyed by filename stem. Dropping a file whose stem is
+already loaded **replaces** that night, so re-dropping a folder never duplicates. The
+night's date comes from the leading 8 digits of the stem (`DDMMYYYY`, so `01072026 (1).ds1`
+still parses); if the name has no leading date, the first session's ON_DATE record is used;
+if neither exists the file is refused with a message.
+
+**Session placement:** sessions render on the noon-to-noon axis at their RTC positions, in
+file order. If a session's RTC start precedes the previous session's end (a clock anomaly),
+it is placed immediately after the previous session instead — the axis stays monotonic and
+elapsed time stays authoritative.
+
 Two consequences worth stating explicitly:
 
 - The min/max decimation needed to draw a 6-hour trace at ~1200 px **is** the inspiratory /
@@ -278,6 +308,15 @@ Two consequences worth stating explicitly:
   mechanism serves both purposes; no breath detection required.
 - Percentiles come from the 301-bin histogram, not from sorting 250k samples per night —
   exact time-weighted percentiles at 0.1 cmH2O resolution, O(n), no allocation.
+  The rule is pinned so the differential test can be exact: `percentile(p)` is the
+  `floor(n·p/100)`-th order statistic, 0-indexed — the same indexing `ds1.py` and the
+  vendor's `Percentile` use. Equivalently: the first bin whose cumulative count exceeds
+  `floor(n·p/100)`. Samples above 30.0 cmH2O clamp into the top bin (the device ceiling is
+  20 cmH2O and the vendor discards >30, so the bin is expected to stay empty — clamping
+  just keeps totals consistent if it ever isn't).
+- The leak median reported per session is computed from the **full 10 Hz baseline** inside
+  the worker, *before* the baseline is decimated to 1 Hz for storage. `ds1.py` computes it
+  at 10 Hz; computing ours at 1 Hz would fail the differential test by construction.
 
 Below the pixel threshold (a 30 s window is 300 samples, fewer than the pixel width)
 decimation is skipped and raw samples are drawn.
@@ -331,6 +370,9 @@ Single scrolling page; PicoCSS semantics.
 
 **Empty state:** a large drop target with a short explanation and a click-to-browse fallback.
 
+**Table default:** sorted by date, newest first. Trend charts use a time x-axis so nights
+that were not recorded appear as gaps, not as adjacent bars pretending to be consecutive.
+
 **Range selection** offers three routes to the same state, because people reach for
 different ones: preset buttons (7/30/90/all), a draggable brush on the context strip, and
 two date inputs. Filtering is synchronous — with 69 nights a full recompute is
@@ -354,7 +396,7 @@ authoritative and wall-clock time as nominal, and say so where it could mislead.
 
 | Case | Behaviour |
 |---|---|
-| `.ds3` / `.ds4` dropped | Refused by extension with a clear message. Critical: this parser would produce confident garbage from a `.ds3` |
+| `.ds2` / `.ds3` / `.ds4` dropped | Refused by extension with a clear message naming the format. Critical: these are sibling formats — `.ds3`/`.ds4` have different layouts, and `.ds2` shares the layout but needs a rescale this tool does not implement. Silent skipping would be indistinguishable from a bug |
 | Other non-`.ds1` files in a folder | Skipped silently, reported as a count |
 | Truncated file | Parse what is valid, flag the night `partial`. Fixed-size self-describing records make resync a scan to the next 4-byte boundary with bit 7 set |
 | Samples before any SWITCH record | Synthesise a session at noon from the filename, matching vendor behaviour |
