@@ -102,3 +102,11 @@ header hgroup > * {
   cursor: help;
   border-bottom: none;
 }
+
+/* Pico tooltips are single-line by default; info bubbles carry prose */
+.info-tip[data-tooltip]::before {
+  white-space: normal;
+  width: max-content;
+  max-width: min(22rem, 80vw);
+  text-align: left;
+}
