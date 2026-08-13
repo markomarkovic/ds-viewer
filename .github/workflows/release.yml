@@ -1,0 +1,38 @@
+# .github/workflows/release.yml
+name: release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # provenance: the git hash must be meaningful
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: make build
+      - run: cp dist/index.html ds-viewer.html
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: ds-viewer.html
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+  deploy-pages:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+    steps:
+      - uses: actions/deploy-pages@v4
