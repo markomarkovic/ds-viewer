@@ -1,6 +1,6 @@
 import uPlot from 'uplot'
 import type { Night } from '../types'
-import { Chart } from './Chart'
+import { axisTheme, Chart } from './Chart'
 
 export function TrendChart({
   title,
@@ -36,7 +36,7 @@ export function TrendChart({
                 points: { show: false },
               },
             ],
-            axes: [{}, { size: 44 }],
+            axes: [axisTheme(), { ...axisTheme(), size: 44 }],
             legend: { show: false },
             cursor: { drag: { x: false, y: false } },
           },
