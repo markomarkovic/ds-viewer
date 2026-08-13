@@ -176,8 +176,11 @@ export function App() {
         )}
         <footer>
           <small>
-            ds-viewer v{__APP_VERSION__} · {__GIT_COMMIT__} · timestamps are
-            device-clock and nominal; durations are exact
+            <a href="https://github.com/markomarkovic/ds-viewer">
+              v{__APP_VERSION__}
+            </a>{' '}
+            · {__GIT_COMMIT__} · timestamps are device-clock and nominal;
+            durations are exact
           </small>
         </footer>
       </main>
