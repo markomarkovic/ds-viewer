@@ -4,7 +4,6 @@ import { filesFromDataTransfer, gather } from '../load/dropzone'
 import { initialState, reducer, visibleNights } from '../state'
 import type { WorkerResponse } from '../types'
 import { cmH2O } from '../types'
-import type { Tab } from './NightDetail'
 import { NightDetail, NightHeader } from './NightDetail'
 import { NightTable } from './NightTable'
 import { RangeSelector } from './RangeSelector'
@@ -15,7 +14,6 @@ export function App() {
   const [state, dispatch] = useReducer(reducer, initialState)
   const workerRef = useRef<Worker | null>(null)
   const [dragOver, setDragOver] = useState(false)
-  const [detailTab, setDetailTab] = useState<Tab>('pressure')
   const nextId = useRef(1)
 
   // Info notices dismiss themselves after 5 s; errors stay until dismissed.
@@ -90,8 +88,6 @@ export function App() {
           <NightHeader
             night={selectedNight}
             onBack={() => dispatch({ type: 'select-night', name: null })}
-            tab={detailTab}
-            onTab={setDetailTab}
           />
         ) : (
           <FilePickers
@@ -123,7 +119,7 @@ export function App() {
             <p>Nothing is uploaded — parsing happens entirely in this page.</p>
           </article>
         ) : selectedNight ? (
-          <NightDetail night={selectedNight} tab={detailTab} />
+          <NightDetail night={selectedNight} />
         ) : (
           <>
             <Summary nights={visible} />

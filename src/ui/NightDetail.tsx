@@ -1,25 +1,19 @@
 import { useState } from 'preact/hooks'
 import uPlot from 'uplot'
-import type { Night } from '../types'
+import type { EventKind, Night } from '../types'
 import { cmH2O, deci, PARAM, WORKMODE } from '../types'
-import { axisTheme, Chart } from './Chart'
+import { axisTheme, Chart, nightCursorSync, tooltipPlugin } from './Chart'
 import { Histogram } from './Histogram'
 import { clockLabel, nightGrid, placeSessions } from './nightAxis'
 import { Waveform } from './Waveform'
-
-export type Tab = 'pressure' | 'leak' | 'events'
 
 /** Header-bar content for the detail page; App renders it in <header>. */
 export function NightHeader({
   night,
   onBack,
-  tab,
-  onTab,
 }: {
   night: Night
   onBack: () => void
-  tab: Tab
-  onTab: (t: Tab) => void
 }) {
   const first = night.sessions[0]
   const mode = first?.params.get(PARAM.WorkMode)
@@ -53,36 +47,19 @@ export function NightHeader({
           </hgroup>
         </li>
       </ul>
-      <ul>
-        <li>
-          <div role="group">
-            {(['pressure', 'leak', 'events'] as const).map((t) => (
-              <button
-                key={t}
-                class={tab === t ? '' : 'outline'}
-                onClick={() => onTab(t)}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-        </li>
-      </ul>
     </nav>
   )
 }
 
-export function NightDetail({ night, tab }: { night: Night; tab: Tab }) {
+export function NightDetail({ night }: { night: Night }) {
   const [jumpSec, setJumpSec] = useState<number | null>(null)
   return (
     <section>
-      {tab === 'events' ? (
-        <EventLanes night={night} onJump={setJumpSec} />
-      ) : (
-        <OverviewStrip night={night} channel={tab} onJump={setJumpSec} />
-      )}
-      <Histogram night={night} />
+      <OverviewStrip night={night} channel="pressure" onJump={setJumpSec} />
+      <OverviewStrip night={night} channel="leak" onJump={setJumpSec} />
+      <EventChart night={night} onJump={setJumpSec} />
       <Waveform night={night} jumpSec={jumpSec} />
+      <Histogram night={night} />
     </section>
   )
 }
@@ -101,14 +78,16 @@ function OverviewStrip({
   const scale = channel === 'pressure' ? 0.1 : 1 // press stored in deci
   const min = Array.from(g.min, (v) => (Number.isNaN(v) ? null : v * scale))
   const max = Array.from(g.max, (v) => (Number.isNaN(v) ? null : v * scale))
+  const unit = channel === 'pressure' ? 'cmH2O' : 'L/min'
   return (
     <Chart
       deps={[night.name, channel]}
       build={(el, width) =>
         new uPlot(
           {
+            title: channel,
             width,
-            height: 180,
+            height: 160,
             scales: { x: { time: false } },
             series: [
               {},
@@ -121,13 +100,23 @@ function OverviewStrip({
                 ...axisTheme(),
                 values: (_u, splits) => splits.map(clockLabel),
               },
-              {
-                ...axisTheme(),
-                label: channel === 'pressure' ? 'cmH2O' : 'L/min',
-              },
+              { ...axisTheme(), label: unit, size: 56 },
             ],
             legend: { show: false },
-            cursor: { drag: { x: false, y: false } },
+            cursor: {
+              y: false,
+              drag: { x: false, y: false },
+              sync: nightCursorSync,
+            },
+            plugins: [
+              tooltipPlugin((u, i) => {
+                const x = u.data[0][i]
+                const lo = u.data[1]?.[i]
+                const hi = u.data[2]?.[i]
+                if (x == null || lo == null || hi == null) return null
+                return `${clockLabel(x)}\n${lo.toFixed(1)}–${hi.toFixed(1)} ${unit}`
+              }),
+            ],
             hooks: {
               ready: [
                 (u) => {
@@ -147,49 +136,145 @@ function OverviewStrip({
   )
 }
 
-function EventLanes({
+const LANES: Array<{
+  kind: EventKind
+  label: string
+  color: string
+  row: number
+}> = [
+  { kind: 'APNEA', label: 'apnea', color: '#c33', row: 2 },
+  { kind: 'PRESS_UP', label: 'press up', color: '#3a7ca5', row: 1 },
+  { kind: 'PRESS_DOWN', label: 'press down', color: '#8a6d3b', row: 0 },
+]
+
+/**
+ * Device-flagged events as a uPlot chart, so it shares the night cursor
+ * sync and axis geometry with the strips above and the waveform below.
+ * The marks are painted in a draw hook; an invisible series carries the
+ * event times so the tooltip can name the nearest mark.
+ */
+function EventChart({
   night,
   onJump,
 }: {
   night: Night
   onJump: (sec: number) => void
 }) {
-  const placed = placeSessions(night)
-  const lanes: Array<{ label: string; kind: string; color: string }> = [
-    { label: 'apnea', kind: 'APNEA', color: '#c33' },
-    { label: 'press up', kind: 'PRESS_UP', color: '#3a7ca5' },
-    { label: 'press down', kind: 'PRESS_DOWN', color: '#8a6d3b' },
-  ]
+  const events: Array<{
+    sec: number
+    row: number
+    label: string
+    color: string
+  }> = []
+  for (const { session, offsetSec } of placeSessions(night)) {
+    for (const e of session.events) {
+      const lane = LANES.find((l) => l.kind === e.kind)
+      if (!lane) continue
+      events.push({
+        sec: offsetSec + e.index / 10,
+        row: lane.row,
+        label: lane.label,
+        color: lane.color,
+      })
+    }
+  }
+  events.sort((a, b) => a.sec - b.sec)
+  const xs = events.map((e) => e.sec)
+  const ys = events.map((e) => e.row + 0.5)
+  const data: uPlot.AlignedData = xs.length ? [xs, ys] : [[0], [null]]
+  const counts = night.events
   return (
     <div>
-      {lanes.map((lane) => (
-        <div
-          key={lane.kind}
-          style="display:flex; align-items:center; gap:.5rem"
-        >
-          <small style="width:6rem">{lane.label}</small>
-          <div style="position:relative; height:1.2rem; flex:1; background:var(--pico-muted-border-color)">
-            {placed.flatMap(({ session, offsetSec }) =>
-              session.events
-                .filter((e) => e.kind === lane.kind)
-                .map((e, i) => {
-                  const sec = offsetSec + e.index / 10
-                  return (
-                    <span
-                      key={`${offsetSec}-${i}`}
-                      title={`${clockLabel(sec)} ${lane.label}`}
-                      onClick={() => onJump(sec)}
-                      style={`position:absolute; left:${(sec / 86400) * 100}%; width:2px; top:0; bottom:0; background:${lane.color}; cursor:pointer`}
-                    />
-                  )
-                })
-            )}
-          </div>
-        </div>
-      ))}
+      <Chart
+        deps={[night.name]}
+        build={(el, width) =>
+          new uPlot(
+            {
+              title: 'events (device-flagged)',
+              width,
+              height: 140,
+              scales: {
+                x: { time: false, range: [0, 86400] },
+                y: { range: [0, 3] },
+              },
+              series: [
+                {},
+                {
+                  scale: 'y',
+                  paths: () => null,
+                  points: { show: false },
+                },
+              ],
+              axes: [
+                {
+                  ...axisTheme(),
+                  values: (_u, splits) => splits.map(clockLabel),
+                },
+                {
+                  ...axisTheme(),
+                  scale: 'y',
+                  size: 56,
+                  splits: () => LANES.map((l) => l.row + 0.5),
+                  values: () => [...LANES].reverse().map((l) => l.label),
+                  grid: { show: false },
+                },
+              ],
+              legend: { show: false },
+              cursor: {
+                y: false,
+                drag: { x: false, y: false },
+                sync: nightCursorSync,
+              },
+              plugins: [
+                tooltipPlugin((u, i) => {
+                  const ev = events[i]
+                  if (!ev) return null
+                  // only name a mark when the cursor is actually near it
+                  const px = u.valToPos(ev.sec, 'x')
+                  const left = u.cursor.left
+                  if (left == null || Math.abs(px - left) > 24) return null
+                  return `${clockLabel(ev.sec)}\n${ev.label}`
+                }),
+              ],
+              hooks: {
+                ready: [
+                  (u) => {
+                    u.over.addEventListener('click', (e) => {
+                      const rect = u.over.getBoundingClientRect()
+                      onJump(u.posToVal(e.clientX - rect.left, 'x'))
+                    })
+                  },
+                ],
+                draw: [
+                  (u) => {
+                    const ctx = u.ctx
+                    ctx.save()
+                    const dpr = devicePixelRatio
+                    for (const ev of events) {
+                      const x = u.valToPos(ev.sec, 'x', true)
+                      const y0 = u.valToPos(ev.row + 0.1, 'y', true)
+                      const y1 = u.valToPos(ev.row + 0.9, 'y', true)
+                      ctx.fillStyle = ev.color
+                      ctx.fillRect(
+                        x - dpr,
+                        Math.min(y0, y1),
+                        2 * dpr,
+                        Math.abs(y0 - y1)
+                      )
+                    }
+                    ctx.restore()
+                  },
+                ],
+              },
+            },
+            data,
+            el
+          )
+        }
+      />
       <small>
-        {night.events.apnea} apnea · {night.events.pressUp} press-up ·{' '}
-        {night.events.pressDown} press-down (device-flagged)
+        {counts.apnea} apnea · {counts.pressUp} press-up · {counts.pressDown}{' '}
+        press-down
       </small>
     </div>
   )
