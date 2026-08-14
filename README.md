@@ -76,15 +76,21 @@ links work): pressure, leak and event strips span the noon-to-noon day; brush an
 them to choose the waveform window, or click to centre it. Below, the flow and pressure
 waveforms share a linked cursor with the strips, with window presets (30 s to 5 m),
 First/Previous/Next/Last paging, brush-to-zoom, and the device's apnea markers drawn on
-the traces. A time-in-pressure histogram with the cumulative curve and P90/P95 markers
-closes the page. Dark mode follows the browser and the charts retint live.
+the traces. A time-in-pressure histogram with the cumulative curve and P90/P95 markers,
+and a breath-metrics table (tidal volume, breath rate, I:E, minute ventilation, leakage)
+close the page. Dark mode follows the browser and the charts retint live.
 
-The displayed percentiles use the standard time-weighted definition and will
-not match the vendor software's P90/P95 (see DS1_FORMAT.md). Apnea counts are
-the device's own markers, not the vendor software's re-scored events.
+The summary's Horizontal Pressure P90/P95 and the night page's breath metrics
+reproduce the vendor software's own analysis, validated against its saved
+reports (see [Accuracy](#accuracy)); they are computed in-browser from the
+recorded channels and marked as estimates in the UI. The histogram keeps the
+standard time-weighted percentiles of the raw samples. Apnea counts are the
+device's own markers, not the vendor software's re-scored events.
 
 Development: `make dev`, `make test`, `make typecheck`, `make lint`, `make format`. The
-parser is verified against `ds1.py` row-for-row with `make test-diff DS1_DIR=<data dir>`.
+parser is verified against `ds1.py` row-for-row with `make test-diff DS1_DIR=<data dir>`;
+the breath metrics are verified against values extracted from the vendor's saved reports
+with `make test-reports DS1_DIR=<data dir>` (see `tools/reports-to-json.py`).
 Releases are built by CI on `v*` tags, which attach the single file and publish Pages.
 
 ## Export layout
@@ -139,24 +145,26 @@ Sessions are aligned to 256-byte boundaries; a file holds one to three of them.
 
 ## Accuracy
 
-Checked against the vendor software's own per-day table across nine days:
+Checked against the vendor software's own per-day table across nine days, and against its
+saved daily and statistical reports across thirteen nights:
 
-| Quantity                     | Result                                                          |
-| ---------------------------- | --------------------------------------------------------------- |
-| Duration                     | Exact — one day matched to the second, the rest within a minute |
-| Avg. pressure                | Exact on all nine days                                          |
-| Work mode, pressure settings | Exact                                                           |
-| Max. pressure                | Within 0.1 cmH2O, once the low-pass filter is applied           |
-| P90 / P95                    | **Not reproduced** — see below                                  |
-| Apnea count / AHI            | **Not reproduced** — see below                                  |
+| Quantity                               | Result                                                                     |
+| -------------------------------------- | -------------------------------------------------------------------------- |
+| Duration                               | Exact — one day matched to the second, the rest within a minute            |
+| Avg. pressure                          | Exact on all nine days                                                     |
+| Work mode, pressure settings           | Exact                                                                      |
+| Max. pressure                          | Within 0.1 cmH2O, once the low-pass filter is applied                      |
+| P90 / P95 (viewer)                     | Exact on all thirteen report nights                                        |
+| TV, breath rate, I:E, leakage (viewer) | Match the reports to the printed digit (minute-volume means within 0.01 %) |
+| Apnea count / AHI                      | **Not reproduced** — see below                                             |
 
-Two deliberate non-goals explain the gaps, and both are worth understanding before you compare
-numbers with the vendor software:
+Two things are worth understanding before you compare numbers with the vendor software:
 
-- **P90/P95 are not percentiles of the sample stream.** The vendor software segments the flow
-  channel into individual breaths and takes percentiles of _per-breath_ pressures (inspiratory
-  maximum, expiratory minimum). Reproducing them exactly needs a port of its breath-segmentation
-  heuristics, which this tool does not attempt.
+- **P90/P95 are not percentiles of the sample stream.** The vendor software derives its
+  "Horizontal Pressure" P90/P95 from a histogram of the smoothed pressure channel over the
+  whole night. The viewer ports that analysis, plus the flow-channel breath segmentation
+  behind the volume metrics, and matches the saved reports; `ds1.py` still reports only the
+  time-weighted sample percentiles.
 - **The apnea count shown by the vendor software is not the count stored in the file.** The
   device writes its own apnea markers, but the software ignores them and re-scores events from
   the flow waveform. On one night the software reported 10 apneas where the file contained 6; on
@@ -185,8 +193,9 @@ Filenames are `DDMMYYYY.ds1` — day, month, four-digit year.
   defines `CP`, `STATE` (tidal volume, leak, temperature, humidity) and `SPO` (oximetry) records,
   but the device tested writes none of them, so that decoding is untested.
 - The flow scale (~0.12 L/min per count) is derived from the vendor software's own tidal-volume
-  formula and cross-checked against expected mask vent flow. It is consistent and physiologically
-  sensible, but it is not a figure read directly from a calibration constant.
+  formula and cross-checked against expected mask vent flow. It is not a figure read directly
+  from a calibration constant, but the viewer's tidal-volume figures reproduce the vendor
+  reports exactly under it, which pins the scale.
 - Per-device calibration parameters (`PWM_*`, `P_*`, `F_*`) were unset on the test device.
 - **Work-mode names are family-specific.** The vendor software maps the `WorkMode` setting to a
   mode name through a table selected by device family; `ds1.py` uses the `DS` branch, which is

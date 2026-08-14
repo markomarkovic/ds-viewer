@@ -151,23 +151,31 @@ immediately after an `APNEA` record.
 
 Compared against the vendor software's own per-day table, across nine consecutive days:
 
-| quantity          | agreement                                            | how the app derives it                                                                             |
-| ----------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| **Duration**      | ✅ exact (one day to the second, rest within ~1 min) | `Σ samples / 10 Hz` over all sessions in the file                                                  |
-| **Work Mode**     | ✅ exact (`AUTO`)                                    | PARAM 0x04                                                                                         |
-| **Avg. Pressure** | ✅ exact on all 9 days                               | mean of the raw pressure channel, **truncated** to int in 0.1 cmH2O                                |
-| **Max. Pressure** | ≈ within 0.1 on 9/9                                  | max **after** the α=20 low-pass (raw max runs 1–2 cmH2O high)                                      |
-| **P90 / P95**     | ❌ not reproduced                                    | percentiles of **per-breath** pressures (`InspPresP90`, `ExpPresP90/95`), not of the sample stream |
-| **Apnea / AHI**   | ❌ not reproduced                                    | the app **ignores the device's stored `APNEA` records** and re-scores from the flow channel        |
+| quantity                          | agreement                                            | how the app derives it                                                                      |
+| --------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| **Duration**                      | ✅ exact (one day to the second, rest within ~1 min) | `Σ samples / 10 Hz` over all sessions in the file                                           |
+| **Work Mode**                     | ✅ exact (`AUTO`)                                    | PARAM 0x04                                                                                  |
+| **Avg. Pressure**                 | ✅ exact on all 9 days                               | mean of the raw pressure channel, **truncated** to int in 0.1 cmH2O                         |
+| **Max. Pressure**                 | ≈ within 0.1 on 9/9                                  | max **after** the α=20 low-pass (raw max runs 1–2 cmH2O high)                               |
+| **P90 / P95**                     | ✅ exact, 13/13 report nights (viewer port)          | histogram of the α=20-smoothed pressure over the whole night — see below                    |
+| **TV / BPM / I:E / MV / leakage** | ✅ validated against the saved reports (viewer port) | per-breath lists from flow-channel segmentation (`CalIsnpExp`/`GetInspExpPress`)            |
+| **Apnea / AHI**                   | ❌ not reproduced                                    | the app **ignores the device's stored `APNEA` records** and re-scores from the flow channel |
 
 Two things this pins down:
 
-- `Percentile(seq, p)` = sort, take index `len*p/100` (integer division), truncate to int.
-  Percentiles and averages are fed **per-breath** lists built by `CalIsnpExp`/`GetInspExpPress`
-  (`InsMaxPress` = max pressure over an inspiration, `ExpMinPress` = min over an expiration),
-  clamped to the configured `MinPress`/`MaxPress`. An independent breath segmentation gets close
-  (the reference P95 lands near my expiratory-minimum P90) but does not match exactly — matching
-  it needs a full port of the app's segmentation heuristics.
+- **The reported P90/P95 ("Horizontal Pressure") are not per-breath statistics.** `CalPress`
+  builds a 301-bin histogram of `trunc(smoothed pressure)` clamped into `[40, 300]` over the
+  whole night (sessions joined with zero-filled wall-clock gaps, whose zeros clamp into the
+  40 bin); P90/P95 are the first bins whose cumulative share, in permille rounded
+  half-to-even, reaches 900/950. The per-breath `InsMaxPress`/`ExpMinPress` fields exist but
+  never feed the reported figures. The reported TV/BPM/I:E/minute-volume/leakage quartets
+  _do_ come from per-breath lists built by `CalIsnpExp`/`GetInspExpPress` —
+  `Percentile(seq, p)` = sort, take index `len*p/100` (integer division), truncate to int;
+  averages zero out values above an outlier bound before a truncating f32 mean
+  (`CalculatedValue`), and reported leakage is the breath-onset smoothed flow in raw counts
+  ÷ 10. The viewer ports this pipeline (`src/parse/breath.ts`) and matches the app's saved
+  reports — P90/P95 exactly on all 13 report nights; the full transcription lives in
+  [`docs/superpowers/specs/2026-08-14-breath-metrics-v1-design.md`](docs/superpowers/specs/2026-08-14-breath-metrics-v1-design.md).
 - The **Apnea count in the software is not what the device wrote.** On one night the app reported
   10 apneas where the file contained 6 `0x9a` records; on another, 5 where the file contained 9.
   `AnalysisData` keeps `0x9a` only as `TEvent{iStart, iLen}`, and `GetAI`/`CalEvents`/`CalculationHI`
