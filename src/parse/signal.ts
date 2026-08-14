@@ -19,18 +19,46 @@ export function median(sorted: Float64Array): number {
   return sorted.length === 0 ? 0 : sorted[Math.floor(sorted.length / 2)]!
 }
 
+/**
+ * Vendor LowPass_Float (float32[] overload): each pass stores
+ * f32((prev*(100-a) + x*a) / 100), forward then backward. The vendor divides
+ * by 100 at the end instead of premultiplying k = a/100; intermediates are
+ * kept wide (x87-style) and rounded once at the f32 store, which is what the
+ * oracle-validated port reproduces.
+ */
 export function lowpassF32(x: ArrayLike<number>, a: number): Float32Array {
-  const k = Math.fround(a / 100)
   const y = Float32Array.from(x)
   if (y.length === 0) return y
   let prev = y[0]!
   for (let i = 0; i < y.length; i++) {
-    y[i] = prev * (1 - k) + y[i]! * k // Float32Array store rounds to f32
+    y[i] = (prev * (100 - a) + y[i]! * a) / 100 // f32 store rounds
     prev = y[i]!
   }
   prev = y[y.length - 1]!
   for (let i = y.length - 1; i >= 0; i--) {
-    y[i] = prev * (1 - k) + y[i]! * k
+    y[i] = (prev * (100 - a) + y[i]! * a) / 100
+    prev = y[i]!
+  }
+  return y
+}
+
+/**
+ * Vendor LowPass_Float (List<float> overload): identical filter, but every
+ * stored sample is additionally Math.Round()ed half-to-even, so the output
+ * is an integer-valued sequence. The vendor smooths the pressure channel
+ * with this variant; the reported P90/P95 histogram depends on it.
+ */
+export function lowpassRoundF32(x: ArrayLike<number>, a: number): Float32Array {
+  const y = Float32Array.from(x)
+  if (y.length === 0) return y
+  let prev = y[0]!
+  for (let i = 0; i < y.length; i++) {
+    y[i] = roundHalfEven((prev * (100 - a) + y[i]! * a) / 100)
+    prev = y[i]!
+  }
+  prev = y[y.length - 1]!
+  for (let i = y.length - 1; i >= 0; i--) {
+    y[i] = roundHalfEven((prev * (100 - a) + y[i]! * a) / 100)
     prev = y[i]!
   }
   return y

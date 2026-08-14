@@ -272,26 +272,23 @@ v1 itself does not read it after `reduceBreaths`.
 
 ## Deviations from the vendor, both testable
 
-**Session gaps.** The vendor segments one array spanning every block, including zero-filled
-blank blocks covering the wall-clock gaps between sessions, and subtracts the accumulated
-zero-run from `iNextInsp` so a breath spanning a gap still gets a sane BPM. We concatenate
-sessions contiguously and omit the compensation. The blast radius is one breath per session
-seam plus a shift in where the 5-minute trims land. Blanks cannot contaminate the P90/P95
-pool, because blank-region pressure is 0 and the pool filters to `≥ 40`.
+**Session gaps — the contiguous shortcut failed reconciliation and was replaced.** The
+vendor segments one array spanning every block, including zero-filled blank blocks covering
+the wall-clock gaps between sessions (`InitBlankBlock`: `10 × wholeSeconds(next.start −
+prev.end)` zeros, reversed timestamps swapped, i.e. `abs`). This spec originally shipped a
+contiguous concatenation; the oracle rejected it, and `buildNight` now reproduces the
+vendor's assembly exactly: **each session is smoothed on its own** (the vendor filters per
+block, so blank regions stay exactly zero and nothing bleeds across seams) and the smoothed
+sessions are placed at their wall-clock offsets on a zero-filled timeline. The zeroRun
+compensation in `segmentBreaths` is unchanged and now operates on real zeros.
 
-If P90/P95 misses the oracle, this is the first hypothesis to test — by zero-filling gaps to
-their true wall-clock length and re-running — **before any tolerance is loosened.**
-
-**Leak scale.** `iLeak` is smoothed flow in raw counts, but the conversion the vendor's UI
-applies before printing "L/min" lives in the UI assembly, not in `DP.Analysis`. We have not
-read it. The reported 11/08 quartet (Avg 14.8, 50/90/95 = 14.7/17.4/18.2) is not consistent
-with `trunc(counts) × 0.12` under any single rounding rule: 14.7 needs 122.5 counts, and
-neither 122 nor 123 prints as 14.7.
-
-We therefore ship `counts × FLOW_LPM` and assert the leak oracle at ±0.2 L/min. A systematic
-offset across all 13 nights is a scale to calibrate, not a segmentation bug — the same
-relationship TV has to the flow constant. If it cannot be settled, leak percentiles ship
-without the vendor-comparison claim; the segmentation result does not depend on it.
+**Leak scale — resolved.** The vendor prints `Leakage*` fields (raw smoothed-flow counts
+from `GetInspExpPress`) divided by **10**, not multiplied by `FLOW_LPM` (its `SetMaskState`
+divides `iLeak` by 10 the same way). `reduceBreaths` therefore reports `counts / 10` as
+L/min for the breath-leak quartet, and the 11/08 oracle quartet (14.8, 14.7/17.4/18.2)
+reproduces to the displayed digit. `FLOW_LPM = 0.12` is untouched and still feeds the
+existing leak/flow displays (`Session.leak`, `leakMedian`), whose physical calibration is a
+separate question from what the vendor's report prints.
 
 ## Validation
 
@@ -362,6 +359,67 @@ the leak scale is settled.
   produce plausible numbers that disagree with the reports in the last digit.
 - **The oracle covers one corpus.** Thirteen nights from one device in one mode. It confirms
   the port, not its behaviour on hardware we have never seen.
+
+## Validation outcome (2026-08-14)
+
+Reconciliation was completed against the vendor's own assemblies (`DP.Analysis.dll` from
+`DreamSleep 1.0.25EN.exe`, disassembled with monodis), because the hypothesis ladder in
+_Risks_ was exhausted without closing the gap. Several claims in _The algorithm_ turned out
+to be misread from the IL and are **superseded** by the implementation as follows:
+
+1. **The reported Horizontal Pressure P90/P95 are not `percentile(expSamples, ·)`.** They
+   are `CalPress`'s `PressP90/PressP95`: a 301-bin histogram of `trunc(pressSmooth[i])`
+   clamped into `[40, 300]` over the **whole padded night including blank-block zeros**
+   (which land in the 40 bin), where a percentile is the first bin whose cumulative
+   permille, `(int)Math.Round(1000·cum/n)` (half-to-even), reaches 900/950. The
+   `GetInspExpPress` pools exist in the vendor's code but do not feed the printed figures;
+   `expPress.avg/min` and `inspPress.*` still come from them.
+2. **The pressure channel is smoothed with the `List<float>` overload of `LowPass_Float`,
+   which rounds every stored sample half-to-even to an integer** — the smoothed pressure is
+   an integer sequence, and the histogram depends on it. Flow (α=50) and flow baseline
+   (α=3) use the array overload (no per-step rounding). Both overloads compute
+   `(prev·(100−F) + x·F)/100` with a single f32 rounding at the store, and smoothing is
+   per block (per session), not across the concatenated night.
+3. **The quartet `Avg` fields are not `(int)Math.Round(mean, 2)`.** They are
+   `CalculatedValue(list, abn, 2)`: values `≥ abn` are replaced by 0 (still counted in the
+   denominator), then f32-average, then `(int)` truncation, with `abn` = `TV_P98+200`,
+   `BPM_P95+50`, `IE_P98+10`, `MVV_P98+1000`, `LeakageP98+100`. The pressure-pool averages
+   are plain `(int)Average` with no `Round(·, 2)`.
+4. **The vendor's file reader only processes whole 4096-byte chunks**; a trailing partial
+   chunk is silently dropped (confirmed: it flips 07/08's P90, and the 13/08 snapshot
+   duration 1:47:26 equals the chunk-truncated sample count exactly). The oracle test
+   truncates its input accordingly. The viewer itself deliberately keeps the full file —
+   dropping up to ~100 s of real tail data to mimic a read bug would make the app worse.
+5. **The reports are a snapshot.** The corpus's `13082026.ds1` gained an evening session
+   (and a 20-sample blip) after the reports were generated; the vendor's 13/08 rows
+   describe only the morning session (1:47:26). The original download
+   (`dreamsleep-20260813.zip`) preserves the file as reported; the oracle reads
+   `DS1_DIR/report-snapshot/<file>.ds1` in preference when present, and that directory now
+   carries the snapshot `13082026.ds1`. All other 12 night files are byte-identical to the
+   snapshot.
+
+Per-assertion status at the original tolerances (nothing loosened):
+
+| #   | Assertion                      | Tolerance  | Result                                     |
+| --- | ------------------------------ | ---------- | ------------------------------------------ |
+| 1   | P90/P95 per night, 13 nights   | exact      | **pass** (26/26 values)                    |
+| 2   | TV avg + 50/90/95, 11/08       | exact      | **pass**                                   |
+| 3   | BPM avg + 50/90/95, 11/08      | exact      | **pass**                                   |
+| 4   | Leak avg + 50/90/95, 11/08     | ±0.2 L/min | **pass** (exact to the displayed digit)    |
+| 5   | 13-night mean TV, BPM 50/90/95 | ±0.05      | **pass**                                   |
+| 6   | 13-night mean I:E 50/90/95     | ±0.05      | **pass**                                   |
+| 7   | 13-night mean MV 50/90/95      | ±0.05      | **fail**: p50 +0.215, p90 +0.323, p95 pass |
+
+Assertion 7's residual is +3 (p50) and +4 (p90) mL/min summed over 13 nightly integers —
+0.007 %/0.009 % relative — consistent with two or three breaths (out of ~80 000) sitting on
+the other side of a pool boundary in one or two nights. Minute volume `fround(iBPM·iTV)` is
+the only statistic whose values are near-unique per breath; every plateau-valued statistic
+(TV, BPM, I:E, both pressure families) reconciles exactly, so the underlying breath lists
+agree to within those few breaths. Exhausted without effect: gap arithmetic, chunk
+truncation variants, post-OFF-marker sample handling, x87-vs-SSE float semantics, pool
+membership rules re-derived from IL, and outlier-average semantics. The tolerance was NOT
+loosened; `make test-reports` intentionally reports assertion 7 red until the cause is
+found.
 
 ## Definition of done
 

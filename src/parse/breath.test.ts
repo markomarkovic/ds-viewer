@@ -138,9 +138,12 @@ test('reduceBreaths: trim, pools, break semantics, vendor truncation', () => {
   expect(m).not.toBeNull()
   if (!m) return
   expect(m.breaths).toBe(3) // r0 trimmed; r1, r2, r3 counted
-  // pressure pools come from r1+r2 only, all samples 55
-  expect(m.expPress.p90).toBe(55)
-  expect(m.expPress.p95).toBe(55)
+  // expPress p90/p95 are CalPress histogram bins over the WHOLE pressSmooth
+  // (what the vendor reports as Horizontal Pressure): 10500 samples of 55 and
+  // 1500 of 200 put the 900-permille threshold in the 200 bin
+  expect(m.expPress.p90).toBe(200)
+  expect(m.expPress.p95).toBe(200)
+  // avg still comes from the expiratory pool (r1+r2 windows, all 55)
   expect(m.expPress.avg).toBe(55)
   expect(m.expPress.min).toBe(55) // max(trunc(55), CalPress min 55)
   expect(m.inspPress.p90).toBe(55)
@@ -161,9 +164,9 @@ test('reduceBreaths: trim, pools, break semantics, vendor truncation', () => {
   // mv = bpm*tv: [3000,3360,2660]
   expect(m.mv.p50).toBe(3000)
   expect(m.mv.avg).toBe(3006) // trunc of mean 3006.67
-  // leak counts [120,125,130] -> percentile/trunc, then * FLOW_LPM
-  expect(m.leak.p50).toBeCloseTo(15, 6) // 125 * 0.12
-  expect(m.leak.avg).toBeCloseTo(15, 6)
+  // leak counts [120,125,130] -> percentile/trunc, printed as counts/10
+  expect(m.leak.p50).toBeCloseTo(12.5, 6)
+  expect(m.leak.avg).toBeCloseTo(12.5, 6)
 })
 
 test('reduceBreaths: null when the expiratory pool is empty (press < 40)', () => {

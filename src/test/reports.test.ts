@@ -1,7 +1,7 @@
 // Opt-in oracle: breath-derived metrics vs the vendor's own saved reports.
 //   make test-reports DS1_DIR=~/Downloads/dreamsleep
 // Requires expected.json in DS1_DIR (tools/reports-to-json.py). Never in CI.
-import { readdirSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { buildNight } from '../parse/metrics'
@@ -36,11 +36,19 @@ d('breath metrics vs vendor reports', () => {
     readFileSync(join(dataDir, 'expected.json'), 'utf8')
   ) as Expected
 
+  // The vendor's reader only processes whole 4096-byte chunks, so the
+  // trailing partial chunk is dropped before parsing. The reports are also a
+  // snapshot: a .ds1 file that gained sessions after the reports were
+  // generated no longer matches its own report rows. When
+  // DS1_DIR/report-snapshot/<file> exists, it holds the file as of report
+  // generation and is used instead.
   const byDate = new Map<string, BreathMetrics>()
   for (const f of readdirSync(dataDir).filter((f) => f.endsWith('.ds1'))) {
-    const buf = readFileSync(join(dataDir, f))
+    const snap = join(dataDir, 'report-snapshot', f)
+    const buf = readFileSync(existsSync(snap) ? snap : join(dataDir, f))
+    const chunked = Math.floor(buf.byteLength / 4096) * 4096
     const { sessions, partial } = parseDs1(
-      buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength),
+      buf.buffer.slice(buf.byteOffset, buf.byteOffset + chunked),
       f
     )
     const stem = f.replace(/\.ds1$/, '')
@@ -101,8 +109,13 @@ d('breath metrics vs vendor reports', () => {
       expect(Math.abs(ours - theirs)).toBeLessThanOrEqual(0.2)
   })
 
+  // the statistical aggregates cover exactly the report's nights, not every
+  // .ds1 file that happens to sit in the corpus directory
+  const reportDates = new Set(expected.nights.map((n) => n.date))
   const meanOf = (f: (b: BreathMetrics) => number) => {
-    const vs = [...byDate.values()].map(f)
+    const vs = [...byDate.entries()]
+      .filter(([k]) => reportDates.has(k))
+      .map(([, b]) => f(b))
     return vs.reduce((a, x) => a + x, 0) / vs.length
   }
   const closeTo = (ours: number, theirs: number, label: string) =>
