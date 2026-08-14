@@ -131,5 +131,7 @@ export function buildNight(
     partial,
     breath: breathMetrics,
     breaths: breathMetrics ? breathTable : null,
+    scored: null,
+    ahiScored: null,
   }
 }

@@ -23,6 +23,8 @@ const night = (name: string, y: number, m: number, d: number): Night => ({
   partial: false,
   breath: null,
   breaths: null,
+  scored: null,
+  ahiScored: null,
 })
 
 test('night-loaded inserts sorted by date descending', () => {

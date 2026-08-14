@@ -85,6 +85,14 @@ export type BreathTable = {
   leak: Float32Array // raw counts
 }
 
+export type ScoredKind = 'OSA' | 'CSA' | 'HYP'
+
+export type ScoredEvent = {
+  kind: ScoredKind
+  start: number // sample index on the padded night timeline (10 Hz)
+  len: number // samples
+}
+
 export type BreathMetrics = {
   breaths: number // breaths after the 5-min trim
   expPress: { avg: Deci; min: Deci; p90: Deci; p95: Deci }
@@ -110,6 +118,8 @@ export type Night = {
   partial: boolean
   breath: BreathMetrics | null // null when the 5-min trims leave no breaths
   breaths: BreathTable | null // retained for the event-scoring follow-on
+  scored: ScoredEvent[] | null
+  ahiScored: number | null
 }
 
 export type WorkerRequest = { id: number; name: string; buf: ArrayBuffer }
