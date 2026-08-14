@@ -1,7 +1,8 @@
 import type { Deci, Lpm, Night, RawSession, Session } from '../types'
 import { deci, FLOW_LPM, HZ } from '../types'
+import { reduceBreaths, segmentBreaths } from './breath'
 import { dateFromName } from './ds1'
-import { lowpass, median } from './signal'
+import { lowpass, lowpassF32, median } from './signal'
 
 export function accumulateHistogram(
   press: Uint16Array,
@@ -81,6 +82,23 @@ export function buildNight(
   }
   allBase.sort()
 
+  // Night-level concatenated channels for the breath port. Deviation from the
+  // vendor (spec, "Session gaps"): sessions are contiguous, no zero-filled
+  // wall-clock blanks between them.
+  const flowAll = new Float32Array(totalSamples)
+  const pressAll = new Float32Array(totalSamples)
+  let boff = 0
+  for (const s of raw) {
+    flowAll.set(s.flow, boff)
+    pressAll.set(s.press, boff)
+    boff += s.press.length
+  }
+  const breathTable = segmentBreaths(
+    lowpassF32(flowAll, 50),
+    lowpassF32(flowAll, 3)
+  )
+  const breathMetrics = reduceBreaths(breathTable, lowpassF32(pressAll, 20))
+
   const hours = totalSamples / HZ / 3600
   return {
     name,
@@ -100,7 +118,7 @@ export function buildNight(
     events: { apnea, pressUp, pressDown },
     ahi: hours > 0 ? apnea / hours : 0,
     partial,
-    breath: null,
-    breaths: null,
+    breath: breathMetrics,
+    breaths: breathMetrics ? breathTable : null,
   }
 }

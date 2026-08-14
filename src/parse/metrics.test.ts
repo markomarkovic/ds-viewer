@@ -1,4 +1,5 @@
 import { expect, test } from 'vitest'
+import type { RawSession } from '../types'
 import { deci } from '../types'
 import { simpleNight } from '../test/encode'
 import { parseDs1 } from './ds1'
@@ -88,4 +89,45 @@ test('buildNight computes spec metrics on a synthetic night', () => {
 test('median takes sorted[floor(n/2)]', () => {
   expect(median(Float64Array.from([1, 2, 3, 4]))).toBe(3)
   expect(median(Float64Array.from([1, 2, 3]))).toBe(2)
+})
+
+function squareRaw(sampleCount: number): RawSession {
+  const flow = new Uint16Array(sampleCount)
+  for (let i = 0; i < sampleCount; i++) flow[i] = i % 40 < 20 ? 140 : 60
+  return {
+    start: new Date(2026, 7, 11, 22, 0, 0),
+    end: new Date(2026, 7, 11, 22, 0, 0 + sampleCount / 10),
+    params: new Map(),
+    press: new Uint16Array(sampleCount).fill(55),
+    flow,
+    events: [],
+  }
+}
+
+test('buildNight attaches breath metrics for a long night', () => {
+  const night = buildNight('11082026', [squareRaw(12000)], false)
+  expect(night.breaths).not.toBeNull()
+  expect(night.breath).not.toBeNull()
+  const b = night.breath!
+  expect(night.breaths!.count).toBeGreaterThan(200) // ~15 BPM for 20 min
+  expect(Math.abs(b.bpm.p50 - 15)).toBeLessThanOrEqual(1)
+  expect(Math.abs(b.expPress.p95 - 55)).toBeLessThanOrEqual(1) // constant 5.5
+  expect(Math.abs(b.ie.p50 - 1)).toBeLessThanOrEqual(0.2) // 1:1 duty cycle
+})
+
+test('buildNight: short night leaves both breath fields null', () => {
+  const night = buildNight('11082026', [squareRaw(1000)], false)
+  expect(night.breath).toBeNull()
+  expect(night.breaths).toBeNull()
+})
+
+test('breath metrics unaffected by pre-existing per-session outputs', () => {
+  // two sessions concatenate: same totals as one 12000-sample session
+  const night = buildNight(
+    '11082026',
+    [squareRaw(6000), squareRaw(6000)],
+    false
+  )
+  expect(night.breath).not.toBeNull()
+  expect(night.press.avg).toBe(55) // frozen existing behaviour
 })
