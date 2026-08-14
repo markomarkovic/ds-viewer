@@ -96,3 +96,83 @@ test('empty and too-short inputs yield an empty table', () => {
     0
   )
 })
+
+import type { BreathTable } from '../types'
+import { MINUTE_DATA, reduceBreaths } from './breath'
+
+type Row = {
+  insp: number
+  exp: number
+  next: number
+  tv: number
+  bpm: number
+  leak: number
+}
+function mkTable(rows: Row[]): BreathTable {
+  return {
+    count: rows.length,
+    insp: Int32Array.from(rows, (r) => r.insp),
+    exp: Int32Array.from(rows, (r) => r.exp),
+    nextInsp: Int32Array.from(rows, (r) => r.next),
+    tv: Int32Array.from(rows, (r) => r.tv),
+    bpm: Float32Array.from(rows, (r) => r.bpm),
+    leak: Float32Array.from(rows, (r) => r.leak),
+  }
+}
+
+// r0 is head-trimmed; r3 hits the tail-break: it contributes to every
+// per-breath list but adds no pressure samples.
+const ROWS: Row[] = [
+  { insp: 100, exp: 120, next: 140, tv: 500, bpm: 30, leak: 999 },
+  { insp: 3000, exp: 3020, next: 3040, tv: 200, bpm: 15, leak: 120 },
+  { insp: 3040, exp: 3060, next: 3080, tv: 210, bpm: 16, leak: 125 },
+  { insp: 8000, exp: 8020, next: 9500, tv: 190, bpm: 14, leak: 130 },
+]
+
+test('reduceBreaths: trim, pools, break semantics, vendor truncation', () => {
+  const press = new Float32Array(12000).fill(55)
+  // poison r3's would-be window: if the break were mis-ordered these samples
+  // would drag P95 to 200
+  press.fill(200, 8000, 9500)
+  const m = reduceBreaths(mkTable(ROWS), press)
+  expect(m).not.toBeNull()
+  if (!m) return
+  expect(m.breaths).toBe(3) // r0 trimmed; r1, r2, r3 counted
+  // pressure pools come from r1+r2 only, all samples 55
+  expect(m.expPress.p90).toBe(55)
+  expect(m.expPress.p95).toBe(55)
+  expect(m.expPress.avg).toBe(55)
+  expect(m.expPress.min).toBe(55) // max(trunc(55), CalPress min 55)
+  expect(m.inspPress.p90).toBe(55)
+  expect(m.inspPress.max).toBe(55) // min(trunc(55), CalPress max 200) = 55
+  // tv list [200,210,190] sorted [190,200,210]
+  expect(m.tv.p50).toBe(200) // proves r3 IS in the per-breath lists
+  expect(m.tv.p90).toBe(210)
+  expect(m.tv.p95).toBe(210)
+  expect(m.tv.avg).toBe(200)
+  // bpm x10 list [150,160,140]
+  expect(m.bpm.p50).toBe(15)
+  expect(m.bpm.p95).toBe(16)
+  expect(m.bpm.avg).toBe(15)
+  // ie x10: r1=(3040-3020)/(3020-3000)*10=10, r2=10, r3=(9500-8020)/20*10=740
+  expect(m.ie.p50).toBe(1)
+  expect(m.ie.p95).toBe(74)
+  expect(m.ie.avg).toBe(25.3) // trunc(roundHalfEven(253.333*100)/100)/10
+  // mv = bpm*tv: [3000,3360,2660]
+  expect(m.mv.p50).toBe(3000)
+  expect(m.mv.avg).toBe(3006) // trunc of mean 3006.67
+  // leak counts [120,125,130] -> percentile/trunc, then * FLOW_LPM
+  expect(m.leak.p50).toBeCloseTo(15, 6) // 125 * 0.12
+  expect(m.leak.avg).toBeCloseTo(15, 6)
+})
+
+test('reduceBreaths: null when the expiratory pool is empty (press < 40)', () => {
+  const press = new Float32Array(12000).fill(30)
+  expect(reduceBreaths(mkTable(ROWS), press)).toBeNull()
+})
+
+test('reduceBreaths: null when every breath is head-trimmed', () => {
+  const press = new Float32Array(12000).fill(55)
+  const rows = ROWS.map((r) => ({ ...r, insp: r.insp % MINUTE_DATA }))
+  expect(reduceBreaths(mkTable(rows), press)).toBeNull()
+})
