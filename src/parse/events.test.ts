@@ -145,6 +145,31 @@ test('persistence band is closed: a breath at exactly 30% continues the event', 
   expect(scoreEvents(mkTable(rows))).toHaveLength(1)
 })
 
+test('a recovery overshoot (r3 > 70) aborts the scan without scoring', () => {
+  // breaths 2-4 reduced to TV 100 (50% entry); breath 5 jumps to TV 400 so at
+  // j=4 r3 = pct(400, 100) = 75 — above the open recovery band. The vendor
+  // breaks the scan there (IL_01ea). Without the abort, j=5 would see
+  // r3 = pct(1000, 400) = 60 and score a hypopnea off the later recovery.
+  const rows: Row[] = [
+    { insp: 0, exp: 20, next: 40, tv: 200 },
+    { insp: 40, exp: 60, next: 80, tv: 200 },
+    { insp: 80, exp: 100, next: 120, tv: 100 },
+    { insp: 120, exp: 140, next: 160, tv: 100 },
+    { insp: 160, exp: 180, next: 200, tv: 100 },
+    { insp: 200, exp: 220, next: 240, tv: 400 },
+    { insp: 240, exp: 260, next: 280, tv: 1000 },
+    { insp: 280, exp: 300, next: 320, tv: 1000 },
+    { insp: 320, exp: 340, next: 0, tv: 0 },
+  ]
+  expect(scoreEvents(mkTable(rows))).toHaveLength(0)
+  // control: TV 300 keeps r3 = pct(300, 100) = 66.7 inside (30,70) — that IS
+  // the recovery, closing the event at exp[4]
+  const ctrl = rows.map((r, i) => (i === 5 ? { ...r, tv: 300 } : r))
+  expect(scoreEvents(mkTable(ctrl))).toEqual([
+    { kind: 'HYP', start: 80, len: 100 },
+  ])
+})
+
 test('apneas precede hypopneas in the output regardless of time order', () => {
   // hypopnea early (breaths 2-4), apnea later: give breath 5 a 100-sample pause
   const rows = hypRows(180).map((r, i) =>

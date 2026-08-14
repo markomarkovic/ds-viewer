@@ -142,6 +142,8 @@ for k = 2; k < n3; k++:
             break                                     # inner ends either way
         r4 = pct(brList[k-1].iTV, brList[j].iTV)      # persistence vs pre-event breath k-1
         if r4 < 30 || r4 > 70: break                  # closed band [30,70] continues
+        if r3 > 70: break                             # recovery overshoot aborts the scan
+                                                      # (IL_01ea: ldloc r3; ldc.r8 70; cgt)
         if ((brList[j].iInsp - ev.iStart)) / 10 > 25: break   # int division (int64 in IL);
                                                       # stop scanning >= 26.0 s after start
 ```
@@ -156,6 +158,15 @@ for k = 2; k < n3; k++:
   Vendor quirk; reproduce.
 - The persistence band is **closed** (`[30, 70]`), while the entry and recovery bands are
   **open** (`(30, 70)`). Boundary semantics matter for the synthetic tests.
+- **Recovery overshoot aborts the scan** (correction, 2026-08-14): when `r3 > 70` — the
+  next breath's TV jumps so far that the recovery ratio overshoots the open band — the
+  inner loop breaks without scoring and the outer loop moves on from `k`; the vendor
+  never resumes the scan past an overshoot to find a later in-band recovery. The first
+  transcription of this section omitted the `if r3 > 70: break` line (IL_01ea sits
+  between the persistence check and the 25 s check); the omission produced
+  hypopnea-only over-counts on 40 of 69 corpus nights and no other deviation. NaN `r3`
+  (zero TVs) does not trigger the abort (`cgt` is an ordered compare), same as every
+  other band test here.
 - On a scored event the outer loop jumps to `k = j + 1`, so hypopneas never overlap each
   other; they can overlap apneas (the two scans are independent).
 
@@ -309,9 +320,10 @@ with v1.
 - **`src/parse/events.test.ts`** (committed, CI-visible): synthetic breath tables
   pinning the boundaries — pause gates 95/495/150 (a 95-sample pause must not score; 96
   must; 149 splits CSA from OSA at the cap), the leak 700 gate, the CSA TV pattern, the
-  open (30,70) entry/recovery vs closed [30,70] persistence bands, the ≥ 100-sample
-  duration gate (99 no, 100 yes), the 25 s continuation stop, the apnea/hypopnea
-  ordering, the uint16 length wrap, and the empty/null paths. These protect the port in
+  open (30,70) entry/recovery vs closed [30,70] persistence bands, the `r3 > 70`
+  recovery-overshoot abort, the ≥ 100-sample duration gate (99 no, 100 yes), the 25 s
+  continuation stop, the apnea/hypopnea ordering, the uint16 length wrap, and the
+  empty/null paths. These protect the port in
   CI; the EVT5 oracle proves it once.
 - Tolerances: none. Per-event equality is exact or the port is wrong. Any night that
   cannot be made exact gets the v1 treatment: a stated, specific reason recorded in this
@@ -319,6 +331,25 @@ with v1.
 
 The screenshots of the vendor UI remain useful only as a rendering reference for the
 span style; they carry no numeric weight.
+
+### Validation outcome (2026-08-14)
+
+- **Per-event equality: 3042 of 3042 events across all 69 corpus nights** — type,
+  start, duration, file order, exact, no exclusions. The first run over-counted
+  hypopneas (only hypopneas; apneas were exact corpus-wide from the start) on 40
+  nights; the cause was the transcription omission recorded above (the `r3 > 70`
+  recovery-overshoot abort, IL_01ea). One line in the port fixed all 40 nights; no
+  constant was changed.
+- **Report cross-check: passes** — per-night scored apnea count and `ahiScored` match
+  the statistical report's 13 rows, and the daily report's OSA/CSA split matches. One
+  exclusion: `2026-08-13`, whose `.ds1` gained sessions after the report was printed;
+  its regenerated `.EVT5` matches our scorer exactly (verified per-event), so the stale
+  report row — not the scorer — is the outlier.
+- **Uncertainty #1 resolved: the report prints `mAI`** (all-int32 truncated apnea
+  index), not the unrounded `mOSAIndex + mCSAIndex`. Decisive, not merely consistent:
+  on 7 of the 12 checked nights the two candidates differ at the printed decimal
+  (truncation vs rounding of the same quotient), and the printed value equals `mAI`
+  on every one.
 
 ## UI
 

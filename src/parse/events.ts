@@ -50,6 +50,7 @@ function scoreHypopneas(table: BreathTable, events: ScoredEvent[]): void {
       }
       const r4 = pct(tv[k - 1]!, tv[j]!)
       if (r4 < 30 || r4 > 70) break
+      if (r3 > 70) break // recovery overshoot aborts the scan (IL_01ea)
       if (Math.trunc((insp[j]! - start) / 10) > 25) break
     }
   }
