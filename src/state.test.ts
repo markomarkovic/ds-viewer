@@ -21,6 +21,8 @@ const night = (name: string, y: number, m: number, d: number): Night => ({
   events: { apnea: 7, pressUp: 3, pressDown: 4 },
   ahi: 1,
   partial: false,
+  breath: null,
+  breaths: null,
 })
 
 test('night-loaded inserts sorted by date descending', () => {

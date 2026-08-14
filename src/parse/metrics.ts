@@ -100,5 +100,7 @@ export function buildNight(
     events: { apnea, pressUp, pressDown },
     ahi: hours > 0 ? apnea / hours : 0,
     partial,
+    breath: null,
+    breaths: null,
   }
 }
