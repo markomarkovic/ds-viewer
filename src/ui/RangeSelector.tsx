@@ -36,6 +36,7 @@ export function RangeSelector({
   onRange: (r: DateRange) => void
 }) {
   const asc = [...nights].sort((a, b) => a.date.getTime() - b.date.getTime())
+  const first = asc[0]
   const last = asc[asc.length - 1]
   const preset = (days: number | null) => {
     if (days === null || !last) return onRange({ from: null, to: null })
@@ -60,7 +61,7 @@ export function RangeSelector({
         <div role="group">
           <input
             type="date"
-            value={msToDateInput(range.from)}
+            value={msToDateInput(range.from ?? first?.date.getTime() ?? null)}
             onChange={(e) =>
               onRange({
                 ...range,
@@ -73,7 +74,7 @@ export function RangeSelector({
           />
           <input
             type="date"
-            value={msToDateInput(range.to)}
+            value={msToDateInput(range.to ?? last?.date.getTime() ?? null)}
             onChange={(e) =>
               onRange({
                 ...range,
