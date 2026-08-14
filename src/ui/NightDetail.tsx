@@ -99,35 +99,35 @@ function BreathStats({ night }: { night: Night }) {
   const f1 = (n: number) => n.toFixed(1)
   const rows: Array<[string, string, string, string, string]> = [
     [
-      'Tidal Volume (mL)',
+      'tidal volume (mL)',
       `${b.tv.avg}`,
       `${b.tv.p50}`,
       `${b.tv.p90}`,
       `${b.tv.p95}`,
     ],
     [
-      'Breath Rate (BPM)',
+      'breath rate (BPM)',
       f1(b.bpm.avg),
       f1(b.bpm.p50),
       f1(b.bpm.p90),
       f1(b.bpm.p95),
     ],
     [
-      'Inspiration : Expiration ratio (I:E)',
+      'inspiration : expiration ratio (I:E)',
       `1:${f1(b.ie.avg)}`,
       `1:${f1(b.ie.p50)}`,
       `1:${f1(b.ie.p90)}`,
       `1:${f1(b.ie.p95)}`,
     ],
     [
-      'Minute Vent. (mL/min)',
+      'minute ventilation (mL/min)',
       `${b.mv.avg}`,
       `${b.mv.p50}`,
       `${b.mv.p90}`,
       `${b.mv.p95}`,
     ],
     [
-      'Leakage (L/min)',
+      'leakage (L/min)',
       f1(b.leak.avg),
       f1(b.leak.p50),
       f1(b.leak.p90),
@@ -143,7 +143,7 @@ function BreathStats({ night }: { night: Night }) {
         <thead>
           <tr>
             <th></th>
-            <th>Avg</th>
+            <th>avg</th>
             <th>50%</th>
             <th>90%</th>
             <th>95%</th>
