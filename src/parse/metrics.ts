@@ -1,23 +1,7 @@
 import type { Deci, Lpm, Night, RawSession, Session } from '../types'
 import { deci, FLOW_LPM, HZ } from '../types'
 import { dateFromName } from './ds1'
-
-export function lowpass(x: ArrayLike<number>, a: number): Float64Array {
-  const k = a / 100
-  const y = Float64Array.from(x)
-  if (y.length === 0) return y
-  let prev = y[0]!
-  for (let i = 0; i < y.length; i++) {
-    y[i] = prev * (1 - k) + y[i]! * k
-    prev = y[i]!
-  }
-  prev = y[y.length - 1]!
-  for (let i = y.length - 1; i >= 0; i--) {
-    y[i] = prev * (1 - k) + y[i]! * k
-    prev = y[i]!
-  }
-  return y
-}
+import { lowpass, median } from './signal'
 
 export function accumulateHistogram(
   press: Uint16Array,
@@ -37,10 +21,6 @@ export function percentileDeci(hist: Uint32Array, n: number, p: number): Deci {
     if (cum > target) return deci(b)
   }
   return deci(0)
-}
-
-export function median(sorted: Float64Array): number {
-  return sorted.length === 0 ? 0 : sorted[Math.floor(sorted.length / 2)]!
 }
 
 export function buildNight(

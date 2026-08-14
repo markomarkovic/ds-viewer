@@ -2,13 +2,8 @@ import { expect, test } from 'vitest'
 import { deci } from '../types'
 import { simpleNight } from '../test/encode'
 import { parseDs1 } from './ds1'
-import {
-  accumulateHistogram,
-  buildNight,
-  lowpass,
-  median,
-  percentileDeci,
-} from './metrics'
+import { accumulateHistogram, buildNight, percentileDeci } from './metrics'
+import { lowpass, median } from './signal'
 
 const X = [100, 200, 150, 300, 250, 180, 220, 90, 160, 210]
 

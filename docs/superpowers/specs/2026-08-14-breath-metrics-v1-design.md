@@ -17,14 +17,14 @@ The parent spec designed from a partial read of the IL and flagged the algorithm
 and corrects three assumptions:
 
 1. **P90/P95 are not per-breath `ExpMinPress` percentiles.** `GetInspExpPress` accumulates
-   *individual pressure samples* falling in the later two-thirds of each expiratory phase,
+   _individual pressure samples_ falling in the later two-thirds of each expiratory phase,
    filtered to `≥ 40` (4.0 cmH2O), and takes the percentile over that sample list. The
    per-breath `InsMaxPress`/`ExpMinPress` fields are computed but never feed the reported
    figures. The parent spec's bracketing experiment was measuring the right neighbourhood for
    the wrong reason.
 2. **The flow scale is confirmed by construction, not just empirically.** `iTV` is
    `round(Σ|flow − baseline − 3| / 5)`. One count sustained for one 10 Hz sample at
-   0.12 L/min is `0.12 × (0.1/60) L = 0.2 mL`, so `Σcounts × 0.2 mL` *is* `Σcounts / 5`. The
+   0.12 L/min is `0.12 × (0.1/60) L = 0.2 mL`, so `Σcounts × 0.2 mL` _is_ `Σcounts / 5`. The
    `/5` divisor and the 0.12 L/min/count constant are the same statement. If the reports' TV
    values reproduce, 0.12 is confirmed; if they are off by a constant factor, that factor is
    the correction to `FLOW_LPM`.
@@ -45,14 +45,14 @@ disassembly.
 ### Inputs
 
 Let `flow` and `press` be the whole night's channels, sessions concatenated in order (see
-*Deviations*), as `Float32Array`. Three smoothed derivatives, all via the vendor's
+_Deviations_), as `Float32Array`. Three smoothed derivatives, all via the vendor's
 two-pass filter (our existing `lowpass`, forward then backward, `k = a/100`):
 
-| Array | Source | α | Used for |
-|---|---|---|---|
-| `flowSmooth` | `flow` | 50 | breath boundaries, TV, leak |
-| `flowBase` | `flow` | 3 | the baseline the boundaries cross |
-| `pressSmooth` | `press` | 20 | the P90/P95 sample pool |
+| Array         | Source  | α   | Used for                          |
+| ------------- | ------- | --- | --------------------------------- |
+| `flowSmooth`  | `flow`  | 50  | breath boundaries, TV, leak       |
+| `flowBase`    | `flow`  | 3   | the baseline the boundaries cross |
+| `pressSmooth` | `press` | 20  | the P90/P95 sample pool           |
 
 `DataVer` is 1 for `.ds1` (the vendor derives it from the filename's last character), which
 selects the `/5` TV divisor. The `/2` path is for an older device generation we do not read.
@@ -113,13 +113,13 @@ Details that matter for reproducing the vendor's numbers:
 - The merge does **not** recompute `iBPM`/`iMV` for the breath whose `iNextInsp` it rewrites,
   so those fields stay stale. This is a vendor bug; reproduce it. Deviating here makes BPM
   disagree with the reports.
-- `zeroRun` counts samples where the *smoothed* flow is exactly `0`, which only happens in
-  the vendor's zero-filled inter-session blank blocks. See *Deviations*.
+- `zeroRun` counts samples where the _smoothed_ flow is exactly `0`, which only happens in
+  the vendor's zero-filled inter-session blank blocks. See _Deviations_.
 - The merge starts at index 2, so the first two breaths are never removed.
 - The vendor's `List<TBreath>.Remove(value)` does a field-wise equality search; because
   `iInsp` is unique per breath it is equivalent to removing at index `i`.
 - **The final breath is never finalized.** `iNextInsp`, `iBPM` and `iMV` are only written
-  when the *next* inspiration opens, so the last breath in the list keeps the struct's zero
+  when the _next_ inspiration opens, so the last breath in the list keeps the struct's zero
   defaults — as does any breath left open when the recording ends mid-inspiration, which also
   has `iExp = 0` and `iTV = 0`. `reduceBreaths` still processes it: `end = min(0, length)` is
   0, so the sample scan body never runs, but the breath contributes `0` to `bpmL` and `mvL`
@@ -163,24 +163,24 @@ if inspSamples empty or expSamples empty: return no metrics
 The reported **Horizontal Pressure P90/P95 are `percentile(expSamples, 90/95)`.**
 
 `percentile(list, p)` is the vendor's helper: sort ascending, take element
-`⌊length × p / 100⌋`, truncate to int. Note the index is *not* clamped — for `p = 100` it
+`⌊length × p / 100⌋`, truncate to int. Note the index is _not_ clamped — for `p = 100` it
 would throw; we only call it with 50/90/95.
 
 Aggregate fields, with the vendor's scale factor and rounding:
 
-| Field | Source list | Vendor value | Display |
-|---|---|---|---|
-| `ExpPresP90` / `P95` | `expSamples` | `percentile(·, 90/95)` | ÷10 → cmH2O |
-| `ExpPresAvg` | `expSamples` | `trunc(mean)` | ÷10 |
-| `ExpPresMin` | `expSamples` | `max(trunc(min), PressMin)` | ÷10 |
-| `InspPresP90` / `P95` | `inspSamples` | `percentile(·, 90/95)` | ÷10 |
-| `InspPresAvg` | `inspSamples` | `trunc(mean)` | ÷10 |
-| `InspPresMax` | `inspSamples` | `min(trunc(max), PressMax)` | ÷10 |
-| `TV_P50/90/95`, `TV_Avg` | `tvL` | percentile / `trunc(mean)` | mL as-is |
-| `BPM_P50/90/95`, `BPM_Avg` | `bpmL` | percentile / `trunc(mean)` | ÷10 |
-| `IE_P50/90/95`, `IE_Avg` | `ieL` | percentile / `trunc(mean)` | ÷10 → the x in 1:x |
-| `MVV_P50/90/95`, `MVV_Avg` | `mvL` | percentile / `trunc(mean)` | mL/min as-is |
-| `LeakageP50/90/95`, `LeakageAvg` | `leakL` | percentile / `trunc(mean)` | see *Deviations* |
+| Field                            | Source list   | Vendor value                | Display            |
+| -------------------------------- | ------------- | --------------------------- | ------------------ |
+| `ExpPresP90` / `P95`             | `expSamples`  | `percentile(·, 90/95)`      | ÷10 → cmH2O        |
+| `ExpPresAvg`                     | `expSamples`  | `trunc(mean)`               | ÷10                |
+| `ExpPresMin`                     | `expSamples`  | `max(trunc(min), PressMin)` | ÷10                |
+| `InspPresP90` / `P95`            | `inspSamples` | `percentile(·, 90/95)`      | ÷10                |
+| `InspPresAvg`                    | `inspSamples` | `trunc(mean)`               | ÷10                |
+| `InspPresMax`                    | `inspSamples` | `min(trunc(max), PressMax)` | ÷10                |
+| `TV_P50/90/95`, `TV_Avg`         | `tvL`         | percentile / `trunc(mean)`  | mL as-is           |
+| `BPM_P50/90/95`, `BPM_Avg`       | `bpmL`        | percentile / `trunc(mean)`  | ÷10                |
+| `IE_P50/90/95`, `IE_Avg`         | `ieL`         | percentile / `trunc(mean)`  | ÷10 → the x in 1:x |
+| `MVV_P50/90/95`, `MVV_Avg`       | `mvL`         | percentile / `trunc(mean)`  | mL/min as-is       |
+| `LeakageP50/90/95`, `LeakageAvg` | `leakL`       | percentile / `trunc(mean)`  | see _Deviations_   |
 
 There is no `P50` for either pressure series and no pressure percentile other than 90/95.
 The `Avg` fields are `(int)Math.Round(mean, 2)`, which for these magnitudes is truncation of
@@ -227,27 +227,27 @@ attach both results to the `Night`.
 ### Types
 
 ```ts
-export type Ml = Brand<number, 'Ml'>            // millilitres; new brand
+export type Ml = Brand<number, 'Ml'> // millilitres; new brand
 export const ml = (n: number): Ml => n as Ml
 
 export type BreathTable = {
   count: number
-  insp: Int32Array                              // sample index, night-relative
+  insp: Int32Array // sample index, night-relative
   exp: Int32Array
   nextInsp: Int32Array
-  tv: Int32Array                                // mL
-  bpm: Float32Array                             // breaths/min
-  leak: Float32Array                            // raw counts
+  tv: Int32Array // mL
+  bpm: Float32Array // breaths/min
+  leak: Float32Array // raw counts
 }
 
 export type BreathMetrics = {
-  breaths: number                               // breaths after the 5-min trim
+  breaths: number // breaths after the 5-min trim
   expPress: { avg: Deci; min: Deci; p90: Deci; p95: Deci }
   inspPress: { avg: Deci; max: Deci; p90: Deci; p95: Deci }
   tv: { avg: Ml; p50: Ml; p90: Ml; p95: Ml }
   bpm: { avg: number; p50: number; p90: number; p95: number }
   ie: { avg: number; p50: number; p90: number; p95: number }
-  mv: { avg: Ml; p50: Ml; p90: Ml; p95: Ml }    // mL/min
+  mv: { avg: Ml; p50: Ml; p90: Ml; p95: Ml } // mL/min
   leak: { avg: Lpm; p50: Lpm; p90: Lpm; p95: Lpm }
 }
 ```
@@ -257,8 +257,8 @@ export type BreathMetrics = {
 `Night` gains two nullable fields:
 
 ```ts
-breath: BreathMetrics | null      // null when the trim leaves no breaths
-breaths: BreathTable | null       // retained for the event-scoring follow-on
+breath: BreathMetrics | null // null when the trim leaves no breaths
+breaths: BreathTable | null // retained for the event-scoring follow-on
 ```
 
 Both are null for recordings under ~10 minutes, which the head and tail trims empty out. Every
@@ -312,15 +312,15 @@ policy behind `make test-diff`.
 
 Oracle assertions, in the order the plan should land them:
 
-| # | Assertion | Source | Tolerance |
-|---|---|---|---|
-| 1 | P90 and P95 per night, 13 nights | Statistical report table | exact (integer deci) |
-| 2 | TV avg + 50/90/95, 11/08 | Daily report | exact |
-| 3 | BPM avg + 50/90/95, 11/08 | Daily report | exact |
-| 4 | Leak avg + 50/90/95, 11/08 | Daily report | ±0.2 L/min |
-| 5 | Mean over 13 nights of TV and BPM at 50/90/95 | Statistical report | ±0.05 |
-| 6 | Mean over 13 nights of I:E at 50/90/95 | Statistical report | ±0.05 |
-| 7 | Mean over 13 nights of minute volume at 50/90/95 | Statistical report | ±0.05 |
+| #   | Assertion                                        | Source                   | Tolerance            |
+| --- | ------------------------------------------------ | ------------------------ | -------------------- |
+| 1   | P90 and P95 per night, 13 nights                 | Statistical report table | exact (integer deci) |
+| 2   | TV avg + 50/90/95, 11/08                         | Daily report             | exact                |
+| 3   | BPM avg + 50/90/95, 11/08                        | Daily report             | exact                |
+| 4   | Leak avg + 50/90/95, 11/08                       | Daily report             | ±0.2 L/min           |
+| 5   | Mean over 13 nights of TV and BPM at 50/90/95    | Statistical report       | ±0.05                |
+| 6   | Mean over 13 nights of I:E at 50/90/95           | Statistical report       | ±0.05                |
+| 7   | Mean over 13 nights of minute volume at 50/90/95 | Statistical report       | ±0.05                |
 
 Assertion 1 is the gate: it exercises segmentation, the threshold, the merge, the trim, the
 expiratory window and the percentile helper simultaneously, across 13 independent nights. If
@@ -355,7 +355,7 @@ the leak scale is settled.
 - **Exact agreement across 13 nights is the goal, not a guarantee.** The segmenter is
   deterministic and fully transcribed, so the plausible failure modes are narrow: the gap
   concatenation, `float32` versus `float64` rounding, and half-to-even versus half-up. Each
-  has a specific remedy above. What would be a genuine surprise is a *structural* miss —
+  has a specific remedy above. What would be a genuine surprise is a _structural_ miss —
   breath counts off by more than a percent — which would mean the threshold or crossing rule
   was misread.
 - **`Math.round` and `float64` accumulation are the two easy ways to silently miss.** Both

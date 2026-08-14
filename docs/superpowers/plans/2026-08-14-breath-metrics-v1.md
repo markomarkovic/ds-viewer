@@ -41,12 +41,14 @@ Resolutions to the inconsistencies and gaps found when checking the two specs ag
 ### Task 1: `src/parse/signal.ts` — shared numeric helpers
 
 **Files:**
+
 - Create: `src/parse/signal.ts`
 - Create: `src/parse/signal.test.ts`
 - Modify: `src/parse/metrics.ts` (remove `lowpass`/`median`, import from signal)
 - Modify: `src/parse/metrics.test.ts` (import path only)
 
 **Interfaces:**
+
 - Consumes: nothing new.
 - Produces (for Tasks 3–5):
   - `lowpass(x: ArrayLike<number>, a: number): Float64Array` — moved verbatim, current callers keep it.
@@ -167,12 +169,14 @@ Suggested message: `refactor: extract shared signal helpers into src/parse/signa
 ### Task 2: Types — `Ml`, `BreathTable`, `BreathMetrics`, nullable `Night` fields
 
 **Files:**
+
 - Modify: `src/types.ts`
 - Modify: `src/types.brands.ts`
 - Modify: `src/parse/metrics.ts:105-123` (`buildNight` return — temporary nulls)
 - Modify: `src/state.test.ts:6` (the `night()` literal)
 
 **Interfaces:**
+
 - Produces (exact shapes Tasks 3–5 and 8 rely on):
 
 ```ts
@@ -235,10 +239,12 @@ Suggested message: `feat: add breath-metric types and nullable Night fields`
 ### Task 3: `segmentBreaths` — port of `CalIsnpExp`
 
 **Files:**
+
 - Create: `src/parse/breath.ts`
 - Create: `src/parse/breath.test.ts`
 
 **Interfaces:**
+
 - Consumes: `roundHalfEven` from `./signal`; `BreathTable` from `../types` (type-only).
 - Produces: `segmentBreaths(flowSmooth: Float32Array, flowBase: Float32Array): BreathTable`. Indices are night-relative into the concatenated arrays. The last breath is never finalized (`nextInsp`/`bpm` stay 0; an open breath also has `exp = 0`, `tv = 0`).
 
@@ -253,9 +259,10 @@ import { segmentBreaths } from './breath'
 const flat = (len: number, v: number): number[] => Array<number>(len).fill(v)
 
 /** 40-sample exhale lead-in, then insp/exp blocks, then a 40-sample tail. */
-function square(
-  blocks: Array<{ amp: number; insp: number; exp: number }>
-): { flowSmooth: Float32Array; flowBase: Float32Array } {
+function square(blocks: Array<{ amp: number; insp: number; exp: number }>): {
+  flowSmooth: Float32Array
+  flowBase: Float32Array
+} {
   const xs = flat(40, -40)
   for (const b of blocks) xs.push(...flat(b.insp, b.amp), ...flat(b.exp, -40))
   xs.push(...flat(40, -40))
@@ -271,7 +278,9 @@ test('square wave: breath boundaries, TV, BPM, unfinalized last breath', () => {
   const { flowSmooth, flowBase } = square(Array<typeof NORMAL>(9).fill(NORMAL))
   const t = segmentBreaths(flowSmooth, flowBase)
   expect(t.count).toBe(9)
-  expect(Array.from(t.insp)).toEqual([39, 79, 119, 159, 199, 239, 279, 319, 359])
+  expect(Array.from(t.insp)).toEqual([
+    39, 79, 119, 159, 199, 239, 279, 319, 359,
+  ])
   expect(t.exp[0]).toBe(59)
   expect(t.nextInsp[0]).toBe(79)
   expect(Array.from(t.tv)).toEqual(Array<number>(9).fill(158))
@@ -338,7 +347,9 @@ test('zero-run compensation shortens the gap-spanning breath interval', () => {
 
 test('empty and too-short inputs yield an empty table', () => {
   expect(segmentBreaths(new Float32Array(0), new Float32Array(0)).count).toBe(0)
-  expect(segmentBreaths(new Float32Array(12), new Float32Array(12)).count).toBe(0)
+  expect(segmentBreaths(new Float32Array(12), new Float32Array(12)).count).toBe(
+    0
+  )
 })
 ```
 
@@ -455,10 +466,12 @@ Suggested message: `feat: breath segmentation port of CalIsnpExp`
 ### Task 4: `reduceBreaths` — port of `GetInspExpPress` + `CalPress`
 
 **Files:**
+
 - Modify: `src/parse/breath.ts`
 - Modify: `src/parse/breath.test.ts`
 
 **Interfaces:**
+
 - Consumes: `BreathTable` (Task 2), `percentileVendor`/`roundHalfEven` (Task 1), `deci`/`ml`/`lpm`/`HZ` from `../types`.
 - Produces: `reduceBreaths(table: BreathTable, pressSmooth: Float32Array): BreathMetrics | null` — null when either pressure pool is empty. `MINUTE_DATA = 300 * HZ` exported for tests.
 
@@ -571,7 +584,10 @@ function vendorAvg(sorted: Float32Array): number {
 
 // Port of CalPress: min/max of pressSmooth clamped into [40, 300], first and
 // last MINUTE_DATA samples excluded. Does not mutate the array.
-function calPressBounds(pressSmooth: Float32Array): { min: number; max: number } {
+function calPressBounds(pressSmooth: Float32Array): {
+  min: number
+  max: number
+} {
   let min = 300
   let max = 40
   for (let i = MINUTE_DATA; i < pressSmooth.length - MINUTE_DATA; i++) {
@@ -696,12 +712,14 @@ Suggested message: `feat: breath-list reduction port of GetInspExpPress`
 ### Task 5: `buildNight` integration + worker transfer
 
 **Files:**
+
 - Modify: `src/parse/metrics.ts:46-124` (`buildNight`)
 - Modify: `src/parse/worker.ts:13-15` (transfer list)
 - Modify: `src/parse/metrics.test.ts` (integration tests)
 - Modify: `src/parse/worker.test.ts` (transfer + null assertions)
 
 **Interfaces:**
+
 - Consumes: `segmentBreaths`/`reduceBreaths` (Tasks 3–4), `lowpassF32` (Task 1).
 - Produces: `Night.breath`/`Night.breaths` populated per Spec Reconciliation #4; worker transfers the six `BreathTable` buffers when non-null.
 
@@ -853,11 +871,13 @@ Suggested message: `feat: attach breath table and metrics to Night; transfer tab
 ### Task 6: Oracle tooling — report extractor, Makefile target, opt-in test
 
 **Files:**
+
 - Create: `tools/reports-to-json.py`
 - Create: `src/test/reports.test.ts`
 - Modify: `Makefile` (add `test-reports`)
 
 **Interfaces:**
+
 - Consumes: `Night.breath` (Task 5).
 - Produces: `$DS1_DIR/expected.json` with the exact schema below; `make test-reports DS1_DIR=...` runs assertions 1–7.
 
@@ -875,7 +895,17 @@ Suggested message: `feat: attach breath table and metrics to Night; transfer tab
     "ie": { "p50": 1.2, "p90": 1.5, "p95": 1.7 }
   },
   "nights": [
-    { "date": "2026-08-01", "durationHours": 0, "pressAvg": 0, "p90": 0, "p95": 0, "max": 0, "ahi": 0, "apnea": 0, "leakAvg": 0 }
+    {
+      "date": "2026-08-01",
+      "durationHours": 0,
+      "pressAvg": 0,
+      "p90": 0,
+      "p95": 0,
+      "max": 0,
+      "ahi": 0,
+      "apnea": 0,
+      "leakAvg": 0
+    }
   ],
   "aggregates": {
     "tv": { "p50": 0, "p90": 0, "p95": 0 },
@@ -1207,19 +1237,35 @@ d('breath metrics vs vendor reports', () => {
 
   test('assertion 5: 13-night mean of TV and BPM at 50/90/95', () => {
     for (const p of ['p50', 'p90', 'p95'] as const) {
-      closeTo(meanOf((b) => b.tv[p]), expected.aggregates.tv[p], `tv ${p}`)
-      closeTo(meanOf((b) => b.bpm[p]), expected.aggregates.bpm[p], `bpm ${p}`)
+      closeTo(
+        meanOf((b) => b.tv[p]),
+        expected.aggregates.tv[p],
+        `tv ${p}`
+      )
+      closeTo(
+        meanOf((b) => b.bpm[p]),
+        expected.aggregates.bpm[p],
+        `bpm ${p}`
+      )
     }
   })
 
   test('assertion 6: 13-night mean of I:E at 50/90/95', () => {
     for (const p of ['p50', 'p90', 'p95'] as const)
-      closeTo(meanOf((b) => b.ie[p]), expected.aggregates.ie[p], `ie ${p}`)
+      closeTo(
+        meanOf((b) => b.ie[p]),
+        expected.aggregates.ie[p],
+        `ie ${p}`
+      )
   })
 
   test('assertion 7: 13-night mean of minute volume at 50/90/95', () => {
     for (const p of ['p50', 'p90', 'p95'] as const)
-      closeTo(meanOf((b) => b.mv[p]), expected.aggregates.mv[p], `mv ${p}`)
+      closeTo(
+        meanOf((b) => b.mv[p]),
+        expected.aggregates.mv[p],
+        `mv ${p}`
+      )
   })
 })
 ```
@@ -1278,6 +1324,7 @@ Suggested message: `fix: reconcile breath port against vendor report oracle` (on
 ### Task 8: UI — estimated labelling, Summary, NightDetail, Histogram caveat
 
 **Files:**
+
 - Create: `src/ui/Estimated.tsx`
 - Modify: `src/app.css` (`.estimated` rule, near the `.info-tip` block at line ~164)
 - Modify: `src/state.ts:102-122` (`kpis`)
@@ -1287,6 +1334,7 @@ Suggested message: `fix: reconcile breath port against vendor report oracle` (on
 - Modify: `src/ui/Histogram.tsx:30` (tooltip text — **only if oracle assertion 1 passed in Task 7**)
 
 **Interfaces:**
+
 - Consumes: `Night.breath` (Task 5); `kpis` gains `avgHp90: number | null` and `avgHp95: number | null` (null when no visible night has breath metrics).
 
 - [ ] **Step 1: Write the failing kpis test** (append to `src/state.test.ts`; extend the local `night()` helper with an optional breath argument or build one inline):
@@ -1368,23 +1416,25 @@ const HP_TIP =
 ```
 
 ```tsx
-{k.avgHp90 !== null && k.avgHp95 !== null ? (
-  <div style="text-align:center">
-    <h4 style="margin-bottom:0">
-      <Estimated>
-        {k.avgHp90.toFixed(1)} / {k.avgHp95.toFixed(1)}
-      </Estimated>
-    </h4>
-    <small>
-      HP P90/P95{' '}
-      <span class="info-tip" data-tooltip={HP_TIP} data-placement="bottom">
-        ⓘ
-      </span>
-    </small>
-  </div>
-) : (
-  kpi('avg P95', `${k.avgP95.toFixed(1)} cmH2O`)
-)}
+{
+  k.avgHp90 !== null && k.avgHp95 !== null ? (
+    <div style="text-align:center">
+      <h4 style="margin-bottom:0">
+        <Estimated>
+          {k.avgHp90.toFixed(1)} / {k.avgHp95.toFixed(1)}
+        </Estimated>
+      </h4>
+      <small>
+        HP P90/P95{' '}
+        <span class="info-tip" data-tooltip={HP_TIP} data-placement="bottom">
+          ⓘ
+        </span>
+      </small>
+    </div>
+  ) : (
+    kpi('avg P95', `${k.avgP95.toFixed(1)} cmH2O`)
+  )
+}
 ```
 
 The other four KPI cells are unchanged; `NightTable` and `TrendChart` are unchanged (spec).
@@ -1397,11 +1447,41 @@ function BreathStats({ night }: { night: Night }) {
   if (!b) return null
   const f1 = (n: number) => n.toFixed(1)
   const rows: Array<[string, string, string, string, string]> = [
-    ['Tidal Volume (mL)', `${b.tv.avg}`, `${b.tv.p50}`, `${b.tv.p90}`, `${b.tv.p95}`],
-    ['Breath Rate (BPM)', f1(b.bpm.avg), f1(b.bpm.p50), f1(b.bpm.p90), f1(b.bpm.p95)],
-    ['I:E', `1:${f1(b.ie.avg)}`, `1:${f1(b.ie.p50)}`, `1:${f1(b.ie.p90)}`, `1:${f1(b.ie.p95)}`],
-    ['Minute Vent. (mL/min)', `${b.mv.avg}`, `${b.mv.p50}`, `${b.mv.p90}`, `${b.mv.p95}`],
-    ['Leakage (L/min)', f1(b.leak.avg), f1(b.leak.p50), f1(b.leak.p90), f1(b.leak.p95)],
+    [
+      'Tidal Volume (mL)',
+      `${b.tv.avg}`,
+      `${b.tv.p50}`,
+      `${b.tv.p90}`,
+      `${b.tv.p95}`,
+    ],
+    [
+      'Breath Rate (BPM)',
+      f1(b.bpm.avg),
+      f1(b.bpm.p50),
+      f1(b.bpm.p90),
+      f1(b.bpm.p95),
+    ],
+    [
+      'I:E',
+      `1:${f1(b.ie.avg)}`,
+      `1:${f1(b.ie.p50)}`,
+      `1:${f1(b.ie.p90)}`,
+      `1:${f1(b.ie.p95)}`,
+    ],
+    [
+      'Minute Vent. (mL/min)',
+      `${b.mv.avg}`,
+      `${b.mv.p50}`,
+      `${b.mv.p90}`,
+      `${b.mv.p95}`,
+    ],
+    [
+      'Leakage (L/min)',
+      f1(b.leak.avg),
+      f1(b.leak.p50),
+      f1(b.leak.p90),
+      f1(b.leak.p95),
+    ],
   ]
   return (
     <div>
