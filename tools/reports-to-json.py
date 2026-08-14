@@ -125,14 +125,36 @@ SELFCHECK = {
     ("daily", "leak", "avg"): 14.8,
     ("daily", "ie", "p95"): 1.7,
     ("daily", "durationHours"): 7.48,
+    ("daily", "ahi"): 2.5,
+    ("daily", "osa"): 14,
+    ("daily", "csa"): 5,
 }
+
+
+def event_counts(tables) -> tuple[int, int]:
+    """OSA/CSA counts from the "Event Information" table: a header row
+    ["Event", "OSA", "CSA", "Snore", "Flat"] followed by a data row
+    ["Count", n, n, n, n]. Not a Label：value pair, so flatten() can't see
+    it — handled as its own small table scan instead.
+    """
+    for t in tables:
+        for i, row in enumerate(t):
+            if row[:3] == ["Event", "OSA", "CSA"] and i + 1 < len(t):
+                data = t[i + 1]
+                if data[0] == "Count":
+                    return int(value_num(data[1])), int(value_num(data[2]))
+    raise SystemExit('"Event"/"Count" table not found; run with --dump')
 
 
 def parse_daily(tables) -> dict:
     labels = flatten(tables)
+    osa, csa = event_counts(tables)
     return {
         "date": "2026-08-11",
         "durationHours": duration_hours(labels["Effective Duration"]),
+        "ahi": val(labels, "AHI"),
+        "osa": osa,
+        "csa": csa,
         "press": {
             "avg": val(labels, "Avg. Pressure"),
             "max": val(labels, "Max. Pressure"),
