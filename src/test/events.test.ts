@@ -40,9 +40,12 @@ d('scored events vs vendor .EVT5', () => {
     let compared = 0
     for (const { stem, night, evtPath } of nights) {
       const evt = readFileSync(evtPath)
+      // compare against the vendor's AUTO scoring only: using the vendor app
+      // on the corpus appends user-confirmed/edited records (iValidation 1),
+      // which are human annotations, not scorer output
       const expected = readEvt5(
         evt.buffer.slice(evt.byteOffset, evt.byteOffset + evt.byteLength)
-      )
+      ).filter((e) => e.validation === 0)
       const ours = night.scored ?? []
       expect(ours.length, `${stem} count`).toBe(expected.length)
       for (let i = 0; i < expected.length; i++) {
