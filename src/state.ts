@@ -1,4 +1,4 @@
-import type { Night } from './types'
+import type { BreathMetrics, Deci, Night } from './types'
 import { cmH2O } from './types'
 
 export type DateRange = { from: number | null; to: number | null }
@@ -106,11 +106,19 @@ export function kpis(nights: Night[]): {
   avgP95: number
   avgAhi: number
   avgLeak: number
+  avgHp90: number | null
+  avgHp95: number | null
 } {
   const count = nights.length
   const totalHours = nights.reduce((a, n) => a + n.hours, 0)
   const avg = (f: (n: Night) => number) =>
     count ? nights.reduce((a, n) => a + f(n), 0) / count : 0
+  const withBreath = nights.filter((n) => n.breath !== null)
+  const avgB = (f: (b: BreathMetrics) => Deci) =>
+    withBreath.length
+      ? withBreath.reduce((a, n) => a + cmH2O(f(n.breath!)), 0) /
+        withBreath.length
+      : null
   return {
     count,
     totalHours,
@@ -118,5 +126,7 @@ export function kpis(nights: Night[]): {
     avgP95: avg((n) => cmH2O(n.press.p95)),
     avgAhi: avg((n) => n.ahi),
     avgLeak: avg((n) => n.leakMedian),
+    avgHp90: avgB((b) => b.expPress.p90),
+    avgHp95: avgB((b) => b.expPress.p95),
   }
 }

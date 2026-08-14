@@ -13,6 +13,17 @@ export function handle(req: WorkerRequest): {
     const transfers: Transferable[] = []
     for (const s of night.sessions)
       transfers.push(s.press.buffer, s.flow.buffer, s.leak.buffer)
+    if (night.breaths) {
+      const t = night.breaths
+      transfers.push(
+        t.insp.buffer,
+        t.exp.buffer,
+        t.nextInsp.buffer,
+        t.tv.buffer,
+        t.bpm.buffer,
+        t.leak.buffer
+      )
+    }
     return { res: { id: req.id, name: req.name, ok: true, night }, transfers }
   } catch (e) {
     return {

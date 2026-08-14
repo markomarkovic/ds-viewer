@@ -1,23 +1,8 @@
 import type { Deci, Lpm, Night, RawSession, Session } from '../types'
 import { deci, FLOW_LPM, HZ } from '../types'
+import { reduceBreaths, segmentBreaths } from './breath'
 import { dateFromName } from './ds1'
-
-export function lowpass(x: ArrayLike<number>, a: number): Float64Array {
-  const k = a / 100
-  const y = Float64Array.from(x)
-  if (y.length === 0) return y
-  let prev = y[0]!
-  for (let i = 0; i < y.length; i++) {
-    y[i] = prev * (1 - k) + y[i]! * k
-    prev = y[i]!
-  }
-  prev = y[y.length - 1]!
-  for (let i = y.length - 1; i >= 0; i--) {
-    y[i] = prev * (1 - k) + y[i]! * k
-    prev = y[i]!
-  }
-  return y
-}
+import { lowpass, lowpassF32, lowpassRoundF32, median } from './signal'
 
 export function accumulateHistogram(
   press: Uint16Array,
@@ -37,10 +22,6 @@ export function percentileDeci(hist: Uint32Array, n: number, p: number): Deci {
     if (cum > target) return deci(b)
   }
   return deci(0)
-}
-
-export function median(sorted: Float64Array): number {
-  return sorted.length === 0 ? 0 : sorted[Math.floor(sorted.length / 2)]!
 }
 
 export function buildNight(
@@ -101,6 +82,34 @@ export function buildNight(
   }
   allBase.sort()
 
+  // Night-level channels for the breath port, assembled the vendor's way:
+  // each session is smoothed on its own, then placed on a wall-clock
+  // timeline where inter-session gaps are zero-filled blank blocks of
+  // 10 x whole-seconds(next.start - prev.end) samples (the vendor swaps
+  // reversed timestamps, hence abs). The zeroRun compensation in
+  // segmentBreaths depends on the zeros being exact, which per-session
+  // smoothing guarantees (spec, "Session gaps").
+  const offsets: number[] = []
+  let padded = 0
+  for (let i = 0; i < raw.length; i++) {
+    if (i > 0) {
+      const gapMs = raw[i]!.start.getTime() - raw[i - 1]!.end.getTime()
+      padded += Math.abs(Math.trunc(gapMs / 1000)) * HZ
+    }
+    offsets.push(padded)
+    padded += raw[i]!.press.length
+  }
+  const flowSmooth = new Float32Array(padded)
+  const flowBase = new Float32Array(padded)
+  const pressSmooth = new Float32Array(padded)
+  for (let i = 0; i < raw.length; i++) {
+    flowSmooth.set(lowpassF32(raw[i]!.flow, 50), offsets[i]!)
+    flowBase.set(lowpassF32(raw[i]!.flow, 3), offsets[i]!)
+    pressSmooth.set(lowpassRoundF32(raw[i]!.press, 20), offsets[i]!)
+  }
+  const breathTable = segmentBreaths(flowSmooth, flowBase)
+  const breathMetrics = reduceBreaths(breathTable, pressSmooth)
+
   const hours = totalSamples / HZ / 3600
   return {
     name,
@@ -120,5 +129,7 @@ export function buildNight(
     events: { apnea, pressUp, pressDown },
     ahi: hours > 0 ? apnea / hours : 0,
     partial,
+    breath: breathMetrics,
+    breaths: breathMetrics ? breathTable : null,
   }
 }

@@ -16,6 +16,9 @@ test('classifyName skips everything else', () => {
   expect(classifyName('DreamSleep 1.0.25EN.exe')).toBe('skip')
   expect(classifyName('notes.txt')).toBe('skip')
   expect(classifyName('.DS_Store')).toBe('skip')
+  // report-snapshot copies share a real night's filename stem; ingesting one
+  // on a whole-folder drop would silently replace the real night
+  expect(classifyName('13082026.ds1.snapshot')).toBe('skip')
 })
 
 test('gather partitions a file list', () => {
