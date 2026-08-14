@@ -154,9 +154,7 @@ function BreathStats({ night }: { night: Night }) {
             <tr key={label}>
               <td>{label}</td>
               {vals.map((v, i) => (
-                <td key={i}>
-                  <Estimated>{v}</Estimated>
-                </td>
+                <td key={i}>{v}</td>
               ))}
             </tr>
           ))}
