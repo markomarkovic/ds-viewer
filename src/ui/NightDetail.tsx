@@ -3,6 +3,7 @@ import uPlot from 'uplot'
 import type { EventKind, Night } from '../types'
 import { cmH2O, deci, PARAM, WORKMODE } from '../types'
 import { axisTheme, Chart, nightCursorSync, tooltipPlugin } from './Chart'
+import { Estimated } from './Estimated'
 import { Histogram } from './Histogram'
 import type { NightView } from './nightAxis'
 import { clockLabel, nightBounds, nightGrid, placeSessions } from './nightAxis'
@@ -87,7 +88,81 @@ export function NightDetail({ night }: { night: Night }) {
         onWindow={setWindow}
       />
       <Histogram night={night} />
+      <BreathStats night={night} />
     </section>
+  )
+}
+
+function BreathStats({ night }: { night: Night }) {
+  const b = night.breath
+  if (!b) return null
+  const f1 = (n: number) => n.toFixed(1)
+  const rows: Array<[string, string, string, string, string]> = [
+    [
+      'Tidal Volume (mL)',
+      `${b.tv.avg}`,
+      `${b.tv.p50}`,
+      `${b.tv.p90}`,
+      `${b.tv.p95}`,
+    ],
+    [
+      'Breath Rate (BPM)',
+      f1(b.bpm.avg),
+      f1(b.bpm.p50),
+      f1(b.bpm.p90),
+      f1(b.bpm.p95),
+    ],
+    [
+      'I:E',
+      `1:${f1(b.ie.avg)}`,
+      `1:${f1(b.ie.p50)}`,
+      `1:${f1(b.ie.p90)}`,
+      `1:${f1(b.ie.p95)}`,
+    ],
+    [
+      'Minute Vent. (mL/min)',
+      `${b.mv.avg}`,
+      `${b.mv.p50}`,
+      `${b.mv.p90}`,
+      `${b.mv.p95}`,
+    ],
+    [
+      'Leakage (L/min)',
+      f1(b.leak.avg),
+      f1(b.leak.p50),
+      f1(b.leak.p90),
+      f1(b.leak.p95),
+    ],
+  ]
+  return (
+    <div>
+      <div class="u-title">
+        breath metrics <Estimated>estimated</Estimated>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th></th>
+            <th>Avg</th>
+            <th>50%</th>
+            <th>90%</th>
+            <th>95%</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(([label, ...vals]) => (
+            <tr key={label}>
+              <td>{label}</td>
+              {vals.map((v, i) => (
+                <td key={i}>
+                  <Estimated>{v}</Estimated>
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   )
 }
 

@@ -176,3 +176,9 @@ header hgroup > * {
   max-width: min(22rem, 80vw);
   text-align: left;
 }
+
+/* Breath-derived estimates: visually distinct from channel-exact values */
+.estimated {
+  border-bottom: 1px dotted currentColor;
+  cursor: help;
+}

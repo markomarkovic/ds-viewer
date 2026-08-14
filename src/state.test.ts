@@ -107,3 +107,24 @@ test('kpis of nothing is zeros, not NaN', () => {
   expect(k.avgP95).toBe(0)
   expect(k.avgAhi).toBe(0)
 })
+
+test('kpis averages breath-derived HP percentiles over nights that have them', () => {
+  const hp = (p90: number, p95: number): Night['breath'] =>
+    ({
+      breaths: 1000,
+      expPress: { avg: 60, min: 41, p90, p95 },
+      inspPress: { avg: 65, max: 85, p90: 70, p95: 72 },
+      tv: { avg: 199, p50: 196, p90: 249, p95: 289 },
+      bpm: { avg: 15.1, p50: 15, p90: 18.1, p95: 19.3 },
+      ie: { avg: 1.2, p50: 1.2, p90: 1.5, p95: 1.7 },
+      mv: { avg: 3000, p50: 2950, p90: 4500, p95: 5600 },
+      leak: { avg: 14.8, p50: 14.7, p90: 17.4, p95: 18.2 },
+    }) as Night['breath']
+  const a = { ...night('01082026', 2026, 8, 1), breath: hp(60, 66) }
+  const b = { ...night('02082026', 2026, 8, 2), breath: hp(66, 72) }
+  const c = night('03082026', 2026, 8, 3) // breath: null
+  const k = kpis([a, b, c])
+  expect(k.avgHp90).toBeCloseTo(6.3, 9) // mean of 6.0 and 6.6 cmH2O
+  expect(k.avgHp95).toBeCloseTo(6.9, 9)
+  expect(kpis([c]).avgHp95).toBeNull()
+})
