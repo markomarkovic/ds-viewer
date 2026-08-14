@@ -160,7 +160,9 @@ test('reduceBreaths: trim, pools, break semantics, vendor truncation', () => {
   // ie x10: r1=(3040-3020)/(3020-3000)*10=10, r2=10, r3=(9500-8020)/20*10=740
   expect(m.ie.p50).toBe(1)
   expect(m.ie.p95).toBe(74)
-  expect(m.ie.avg).toBe(25.3) // trunc(roundHalfEven(253.333*100)/100)/10
+  // abnAvg: all three values (10,10,740) are below abnIe (740+10=750), so no
+  // outlier is zeroed; plain f32 average (10+10+740)/3=253.333 -> trunc 253 -> /10
+  expect(m.ie.avg).toBe(25.3)
   // mv = bpm*tv: [3000,3360,2660]
   expect(m.mv.p50).toBe(3000)
   expect(m.mv.avg).toBe(3006) // trunc of mean 3006.67

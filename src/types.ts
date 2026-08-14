@@ -73,7 +73,11 @@ export type PressStats = {
 
 export type BreathTable = {
   count: number
-  insp: Int32Array // sample index, night-relative
+  // sample index into the zero-padded whole-night wall-clock timeline
+  // (gap zeros included, not just concatenated session samples); a future
+  // consumer needing per-session offsets (e.g. event scoring) must re-derive
+  // them from session timestamps
+  insp: Int32Array
   exp: Int32Array
   nextInsp: Int32Array
   tv: Int32Array // mL

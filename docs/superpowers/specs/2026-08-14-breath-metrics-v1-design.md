@@ -161,6 +161,7 @@ if inspSamples empty or expSamples empty: return no metrics
 ```
 
 The reported **Horizontal Pressure P90/P95 are `percentile(expSamples, 90/95)`.**
+**[Superseded — see Validation outcome, item 1.]**
 
 `percentile(list, p)` is the vendor's helper: sort ascending, take element
 `⌊length × p / 100⌋`, truncate to int. Note the index is _not_ clamped — for `p = 100` it
@@ -185,10 +186,12 @@ Aggregate fields, with the vendor's scale factor and rounding:
 There is no `P50` for either pressure series and no pressure percentile other than 90/95.
 The `Avg` fields are `(int)Math.Round(mean, 2)`, which for these magnitudes is truncation of
 the mean; the `Max` fields are `(int)Math.Round(max, 1)`.
+**[Superseded — see Validation outcome, item 3.]**
 
 `PressMin`/`PressMax` come from the vendor's `CalPress` over the same `pressSmooth` array
 with values clamped into `[40, 300]` and the first/last `MinuteData` samples excluded.
 `CalPress` does not mutate the pressure array.
+**[Superseded — see Validation outcome, item 1.]**
 
 **Truncation is load-bearing.** The vendor truncates to int at a fixed ×1 or ×10 scale, and
 the reports print what it truncated. `bpm.p95` must be `trunc(f32(bpm_k × 10)) / 10`, not
@@ -373,7 +376,10 @@ to be misread from the IL and are **superseded** by the implementation as follow
    (which land in the 40 bin), where a percentile is the first bin whose cumulative
    permille, `(int)Math.Round(1000·cum/n)` (half-to-even), reaches 900/950. The
    `GetInspExpPress` pools exist in the vendor's code but do not feed the printed figures;
-   `expPress.avg/min` and `inspPress.*` still come from them.
+   `expPress.avg/min` and `inspPress.*` still come from them. `CalPress` also derives
+   `PressMin`/`PressMax` over that same pass: `min` requires `v > 40` strictly and only
+   scans the trim interior (excluding the head/tail `MINUTE_DATA` samples), initialized to
+   100; `max` scans the whole array with no trim, then is capped at `p98 + 50`.
 2. **The pressure channel is smoothed with the `List<float>` overload of `LowPass_Float`,
    which rounds every stored sample half-to-even to an integer** — the smoothed pressure is
    an integer sequence, and the histogram depends on it. Flow (α=50) and flow baseline

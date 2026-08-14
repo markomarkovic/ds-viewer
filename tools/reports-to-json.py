@@ -54,7 +54,7 @@ def flatten(tables: list[list[list[str]]]) -> dict[str, str]:
     (see --dump): a self-contained cell "Label：value" using a FULL-WIDTH
     colon, or a plain label cell immediately followed by its value cell (no
     colon at all — e.g. "Avg.TV" | "199"). Device-setting cells like
-    "Max. Pressure:20cmH2O" use a half-width colon baked into one cell and
+    "Max. Pressure:25cmH2O" use a half-width colon baked into one cell and
     are deliberately left unsplit so they can never shadow the measured
     "Max. Pressure" | "8.5" pair cell used elsewhere in the same report.
     """
@@ -104,7 +104,7 @@ def iso(d: str, m: str, y: str) -> str:
 
 
 def duration_hours(cell: str) -> float:
-    # H:M:S, minutes/seconds not always zero-padded (e.g. "8:7:51").
+    # H:M:S, minutes/seconds not always zero-padded (e.g. "9:5:7").
     hms = re.search(r"(\d+):(\d{1,2}):(\d{1,2})", cell)
     if hms:
         h, m, s = (int(g) for g in hms.groups())

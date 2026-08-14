@@ -145,12 +145,17 @@ d('breath metrics vs vendor reports', () => {
       )
   })
 
+  // INTENTIONALLY RED: the 13-night mean-MV p50/p90 carry a known unexplained
+  // residual of +0.215/+0.323 mL/min (~0.007%/0.009% relative; p95 passes) at
+  // the deliberately unloosened ±0.05 tolerance. See the spec's "Validation
+  // outcome" section (docs/superpowers/specs/2026-08-14-breath-metrics-v1-design.md)
+  // before treating a failure here as a fresh regression.
   test('assertion 7: 13-night mean of minute volume at 50/90/95', () => {
     for (const p of ['p50', 'p90', 'p95'] as const)
       closeTo(
         meanOf((b) => b.mv[p]),
         expected.aggregates.mv[p],
-        `mv ${p}`
+        `mv ${p} (known residual, see spec Validation outcome)`
       )
   })
 })

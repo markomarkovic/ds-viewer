@@ -13,9 +13,10 @@ const AHI_TIP =
 export function Summary({ nights }: { nights: Night[] }) {
   const k = kpis(nights)
   const HP_TIP =
-    'Horizontal Pressure P90/P95, matching the vendor report: percentiles ' +
-    'of pressure during the later part of each exhalation, reconstructed ' +
-    'from the flow channel. Channel-exact sample-stream avg P95: ' +
+    'Horizontal Pressure P90/P95 as the vendor computes them: a histogram ' +
+    "of the smoothed pressure channel over the whole night (the vendor's " +
+    "CalPress method), matching the vendor's reports on the validation " +
+    'corpus. Channel-exact sample-stream avg P95: ' +
     `${k.avgP95.toFixed(1)} cmH2O.`
   const kpi = (label: string, value: string, tip?: string) => (
     <div style="text-align:center">

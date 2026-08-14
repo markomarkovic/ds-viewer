@@ -76,7 +76,9 @@ export function roundHalfEven(x: number): number {
 /**
  * Vendor Percentile helper: element floor(n*p/100) of the ascending-sorted
  * list, truncated to int. Precondition: sorted, non-empty. The index is not
- * clamped; callers only pass p in {50, 90, 95}.
+ * clamped; callers pass p in {50, 90, 95, 98} (reduceBreaths also uses 98 for
+ * the Abn* outlier bounds — the index is still in range since
+ * floor(0.98*n) <= n-1).
  */
 export function percentileVendor(sorted: Float32Array, p: number): number {
   return Math.trunc(sorted[Math.floor((sorted.length * p) / 100)]!)

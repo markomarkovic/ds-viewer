@@ -27,7 +27,7 @@ export function Histogram({ night }: { night: Night }) {
         time in pressure — P90 {p90.toFixed(1)} · P95 {p95.toFixed(1)} cmH2O{' '}
         <span
           class="info-tip"
-          data-tooltip="Time-weighted percentiles of the raw pressure samples (channel-exact). The Horizontal Pressure P90/P95 in the summary reproduce the vendor's breath-based figures."
+          data-tooltip="Time-weighted percentiles of the raw pressure samples (channel-exact). The Horizontal Pressure P90/P95 in the summary use the vendor's own method (smoothed-pressure histogram) and match its reports."
           data-placement="left"
         >
           ⓘ

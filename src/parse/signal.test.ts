@@ -2,6 +2,7 @@ import { expect, test } from 'vitest'
 import {
   lowpass,
   lowpassF32,
+  lowpassRoundF32,
   median,
   percentileVendor,
   roundHalfEven,
@@ -21,6 +22,26 @@ test('lowpassF32 tracks lowpass within f32 precision', () => {
   for (let i = 0; i < X.length; i++)
     expect(Math.abs(f32[i]! - f64[i]!)).toBeLessThan(1e-3)
   expect(lowpassF32([], 50)).toHaveLength(0)
+})
+
+test('lowpassRoundF32 rounds every store half-to-even, unlike lowpassF32', () => {
+  const r = lowpassRoundF32(X, 50)
+  const f = lowpassF32(X, 50)
+  for (const v of r) expect(Number.isInteger(v)).toBe(true)
+  let differs = false
+  for (let i = 0; i < X.length; i++) if (r[i] !== f[i]) differs = true
+  expect(differs).toBe(true)
+  // Hand trace of y[0] (a=50, k=a/100=0.5), forward pass (prev seeded with x[0]):
+  //   i=0: prev=100, (100*50+100*50)/100=100          -> y0f=100, prev=100
+  //   i=1: x=200,    (100*50+200*50)/100=150           -> y1f=150, prev=150
+  //   i=2: x=150,    (150*50+150*50)/100=150           -> y2f=150, prev=150
+  //   i=3: x=300,    (150*50+300*50)/100=225           -> y3f=225, prev=225
+  // Backward pass seeded with y[9]=183 (from the full forward pass), unwinding
+  // to index 1 gives prev=168 (168*50+100*50)/100 = 134 at the last (i=0)
+  // store, and roundHalfEven(134)=134 (no .5 tie, integer already).
+  expect(r[0]).toBe(134)
+  expect(r[4]).toBe(218)
+  expect(lowpassRoundF32([], 50)).toHaveLength(0)
 })
 
 test('roundHalfEven matches .NET Math.Round', () => {
