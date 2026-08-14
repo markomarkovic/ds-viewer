@@ -131,3 +131,17 @@ test('breath metrics unaffected by pre-existing per-session outputs', () => {
   expect(night.breath).not.toBeNull()
   expect(night.press.avg).toBe(55) // frozen existing behaviour
 })
+
+test('buildNight attaches scored events and AHI for a long night', () => {
+  const night = buildNight('11082026', [squareRaw(12000)], false)
+  // square breathing has 2 s pauses — no events, but the machinery runs
+  expect(night.scored).not.toBeNull()
+  expect(night.scored).toHaveLength(0)
+  expect(night.ahiScored).toBe(0)
+})
+
+test('buildNight: short night leaves scored fields null', () => {
+  const night = buildNight('11082026', [squareRaw(1000)], false)
+  expect(night.scored).toBeNull()
+  expect(night.ahiScored).toBeNull()
+})

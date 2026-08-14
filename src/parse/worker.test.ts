@@ -35,6 +35,8 @@ test('short night: breath fields null, transfer list unchanged', () => {
   if (!res.ok) throw new Error(res.error)
   expect(res.night.breath).toBeNull()
   expect(res.night.breaths).toBeNull()
+  expect(res.night.scored).toBeNull()
+  expect(res.night.ahiScored).toBeNull()
   expect(transfers).toHaveLength(3)
 })
 
