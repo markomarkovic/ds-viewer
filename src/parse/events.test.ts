@@ -195,3 +195,32 @@ test('the 26 s continuation stop abandons a reduction that would otherwise score
   expect(ev).toHaveLength(1)
   expect(ev[0]!.kind).toBe('HYP')
 })
+
+import { ahiScored } from './events'
+
+const evs = (...kinds: Array<'OSA' | 'CSA' | 'HYP'>) =>
+  kinds.map((kind) => ({ kind, start: 0, len: 100 }))
+
+test('ahiScored: apneas per non-zero-pressure hour, truncated to one decimal', () => {
+  // 20000 samples, 3000 of them zero -> valid 17000 > 12000 -> minus 3000 -> 14000
+  const press = new Float32Array(20000).fill(55)
+  press.fill(0, 0, 3000)
+  // 2 apneas: trunc(2 * 360000 / 14000) / 10 = trunc(51.43)/10 = 5.1
+  expect(ahiScored(evs('OSA', 'CSA'), press)).toBe(5.1)
+})
+
+test('ahiScored: hypopneas are not counted', () => {
+  const press = new Float32Array(20000).fill(55)
+  press.fill(0, 0, 3000)
+  expect(ahiScored(evs('OSA', 'CSA', 'HYP', 'HYP'), press)).toBe(5.1)
+})
+
+test('ahiScored: no 5-minute subtraction at or under 20 valid minutes', () => {
+  const press = new Float32Array(10000).fill(55) // valid 10000, not > 12000
+  // trunc(2 * 360000 / 10000)/10 = 7.2
+  expect(ahiScored(evs('OSA', 'OSA'), press)).toBe(7.2)
+})
+
+test('ahiScored: zero apneas is 0.0', () => {
+  expect(ahiScored(evs('HYP'), new Float32Array(10000).fill(55))).toBe(0)
+})

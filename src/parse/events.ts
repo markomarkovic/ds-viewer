@@ -1,4 +1,5 @@
 import type { BreathTable, ScoredEvent } from '../types'
+import { HZ } from '../types'
 
 // Port of DP.Analysis.AnalysisFileV2.CalEvents (apnea + OSA/CSA split).
 // The spec's "The algorithm" section is normative; constants and comparison
@@ -52,4 +53,19 @@ function scoreHypopneas(table: BreathTable, events: ScoredEvent[]): void {
       if (Math.trunc((insp[j]! - start) / 10) > 25) break
     }
   }
+}
+
+// Port of GetAI's mAI: apneas only, per hour of non-zero smoothed-pressure
+// samples, minus 5 minutes when over 20 minutes, truncated to one decimal.
+export function ahiScored(
+  events: ScoredEvent[],
+  pressSmooth: Float32Array
+): number {
+  let apneas = 0
+  for (const e of events) if (e.kind !== 'HYP') apneas++
+  let valid = 0
+  for (let i = 0; i < pressSmooth.length; i++) if (pressSmooth[i] !== 0) valid++
+  if (valid === 0) return 0 // vendor cannot reach this with a real block
+  if (valid > 60 * HZ * 20) valid -= 60 * HZ * 5
+  return Math.trunc((apneas * 360000) / valid) / 10
 }
