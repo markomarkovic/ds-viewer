@@ -400,9 +400,12 @@ to be misread from the IL and are **superseded** by the implementation as follow
    (and a 20-sample blip) after the reports were generated; the vendor's 13/08 rows
    describe only the morning session (1:47:26). The original download
    (`dreamsleep-20260813.zip`) preserves the file as reported; the oracle reads
-   `DS1_DIR/report-snapshot/<file>.ds1` in preference when present, and that directory now
-   carries the snapshot `13082026.ds1`. All other 12 night files are byte-identical to the
-   snapshot.
+   `DS1_DIR/report-snapshot/<file>.ds1.snapshot` in preference when present, and that
+   directory now carries the snapshot `13082026.ds1.snapshot`. The `.snapshot` suffix is
+   load-bearing: the viewer's dropzone recurses into subdirectories on a whole-folder
+   drop and replaces nights by filename stem, so a plain `.ds1` copy in there would
+   silently overwrite the real night with the stale one. All other 12 night files are
+   byte-identical to the snapshot.
 
 Per-assertion status at the original tolerances (nothing loosened):
 

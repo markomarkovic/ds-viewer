@@ -40,11 +40,13 @@ d('breath metrics vs vendor reports', () => {
   // trailing partial chunk is dropped before parsing. The reports are also a
   // snapshot: a .ds1 file that gained sessions after the reports were
   // generated no longer matches its own report rows. When
-  // DS1_DIR/report-snapshot/<file> exists, it holds the file as of report
-  // generation and is used instead.
+  // DS1_DIR/report-snapshot/<file>.snapshot exists, it holds the file as of
+  // report generation and is used instead. The .snapshot suffix keeps the
+  // viewer's dropzone from ingesting the stale copy on a whole-folder drop,
+  // where it would silently replace the real night (same filename stem).
   const byDate = new Map<string, BreathMetrics>()
   for (const f of readdirSync(dataDir).filter((f) => f.endsWith('.ds1'))) {
-    const snap = join(dataDir, 'report-snapshot', f)
+    const snap = join(dataDir, 'report-snapshot', `${f}.snapshot`)
     const buf = readFileSync(existsSync(snap) ? snap : join(dataDir, f))
     const chunked = Math.floor(buf.byteLength / 4096) * 4096
     const { sessions, partial } = parseDs1(
