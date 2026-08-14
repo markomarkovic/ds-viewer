@@ -440,13 +440,9 @@ function EventChart({
                   scale: 'y',
                   size: scored !== null ? 100 : 56,
                   splits: () => laneList.map((l) => l.row + 0.5),
-                  values: () =>
-                    // the null-scored (unchanged) 3-lane axis pairs splits
-                    // with a reversed label list; the 6-lane axis pairs
-                    // them directly so row 5 (OSA) lands at the top.
-                    (scored !== null ? laneList : [...laneList].reverse()).map(
-                      (l) => l.label
-                    ),
+                  // splits and labels are both drawn from laneList in the
+                  // same order, so label i always names split i's row.
+                  values: () => laneList.map((l) => l.label),
                   grid: { show: false },
                 },
               ],

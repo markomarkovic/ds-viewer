@@ -75,8 +75,9 @@ linked across all of them. Dates follow your browser locale; times are always 24
 links work): pressure, leak and event strips span the noon-to-noon day; brush any of
 them to choose the waveform window, or click to centre it. Below, the flow and pressure
 waveforms share a linked cursor with the strips, with window presets (30 s to 5 m),
-First/Previous/Next/Last paging, brush-to-zoom, and the device's apnea markers drawn on
-the traces. A time-in-pressure histogram with the cumulative curve and P90/P95 markers,
+First/Previous/Next/Last paging, brush-to-zoom, and the device's apnea markers plus the
+scored OSA/CSA/hypopnea spans drawn on the traces. A time-in-pressure histogram with the
+cumulative curve and P90/P95 markers,
 and a breath-metrics table (tidal volume, breath rate, inspiration:expiration ratio,
 minute ventilation, leakage)
 close the page. Dark mode follows the browser and the charts retint live.
@@ -85,8 +86,10 @@ The summary's Horizontal Pressure P90/P95 and the night page's breath metrics
 reproduce the vendor software's own analysis, validated against its saved
 reports (see [Accuracy](#accuracy)); they are computed in-browser from the
 recorded channels and marked as estimates in the UI. The histogram keeps the
-standard time-weighted percentiles of the raw samples. Apnea counts are the
-device's own markers, not the vendor software's re-scored events.
+standard time-weighted percentiles of the raw samples. AHI and apnea counts
+now use the viewer's port of the vendor's re-scoring (also an estimate; the
+device's own markers are still shown on the night page), and the night page
+draws the scored OSA/CSA/hypopnea spans as labelled events alongside them.
 
 Development: `make dev`, `make test`, `make typecheck`, `make lint`, `make format`. The
 parser is verified against `ds1.py` row-for-row with `make test-diff DS1_DIR=<data dir>`;
@@ -149,15 +152,15 @@ Sessions are aligned to 256-byte boundaries; a file holds one to three of them.
 Checked against the vendor software's own per-day table across nine days, and against its
 saved daily and statistical reports across thirteen nights:
 
-| Quantity                                                                  | Result                                                                     |
-| ------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| Duration                                                                  | Exact — one day matched to the second, the rest within a minute            |
-| Avg. pressure                                                             | Exact on all nine days                                                     |
-| Work mode, pressure settings                                              | Exact                                                                      |
-| Max. pressure                                                             | Within 0.1 cmH2O, once the low-pass filter is applied                      |
-| P90 / P95 (viewer)                                                        | Exact on all thirteen report nights                                        |
-| Tidal volume, breath rate, inspiration:expiration ratio, leakage (viewer) | Match the reports to the printed digit (minute-volume means within 0.01 %) |
-| Apnea count / AHI                                                         | **Not reproduced** — see below                                             |
+| Quantity                                                                  | Result                                                                                                                       |
+| ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Duration                                                                  | Exact — one day matched to the second, the rest within a minute                                                              |
+| Avg. pressure                                                             | Exact on all nine days                                                                                                       |
+| Work mode, pressure settings                                              | Exact                                                                                                                        |
+| Max. pressure                                                             | Within 0.1 cmH2O, once the low-pass filter is applied                                                                        |
+| P90 / P95 (viewer)                                                        | Exact on all thirteen report nights                                                                                          |
+| Tidal volume, breath rate, inspiration:expiration ratio, leakage (viewer) | Match the reports to the printed digit (minute-volume means within 0.01 %)                                                   |
+| Apnea count / AHI (viewer)                                                | Exact — per-event type, start and duration match the vendor's saved event files across the full corpus; AHI arithmetic exact |
 
 Two things are worth understanding before you compare numbers with the vendor software:
 
@@ -169,8 +172,10 @@ Two things are worth understanding before you compare numbers with the vendor so
 - **The apnea count shown by the vendor software is not the count stored in the file.** The
   device writes its own apnea markers, but the software ignores them and re-scores events from
   the flow waveform. On one night the software reported 10 apneas where the file contained 6; on
-  another it reported 5 where the file contained 9. `ds1.py` reports what the _device_ recorded,
-  labelled `device-flagged`, and does not re-score.
+  another it reported 5 where the file contained 9. The viewer now ports that re-scoring —
+  OSA/CSA/hypopnea from the flow channel, marked as estimates — and matches the vendor's saved
+  event files exactly; `ds1.py` still reports what the _device_ recorded, labelled
+  `device-flagged`, and does not re-score.
 
 The file is ground truth for pressure, flow, settings and device-flagged events. Everything else
 in that UI is the PC software's own re-analysis of the flow channel.

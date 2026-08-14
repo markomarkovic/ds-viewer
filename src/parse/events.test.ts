@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest'
 import type { BreathTable } from '../types'
-import { scoreEvents } from './events'
+import { ahiScored, scoreEvents } from './events'
 
 type Row = {
   insp: number
@@ -220,8 +220,6 @@ test('the 26 s continuation stop abandons a reduction that would otherwise score
   expect(ev).toHaveLength(1)
   expect(ev[0]!.kind).toBe('HYP')
 })
-
-import { ahiScored } from './events'
 
 const evs = (...kinds: Array<'OSA' | 'CSA' | 'HYP'>) =>
   kinds.map((kind) => ({ kind, start: 0, len: 100 }))

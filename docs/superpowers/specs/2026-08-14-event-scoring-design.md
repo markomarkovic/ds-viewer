@@ -356,11 +356,11 @@ span style; they carry no numeric weight.
 All new figures are estimates from the ported scorer and use the established estimated
 register (lowercase labels; `<Estimated>`/info-tip provenance, one popup per element).
 
-- **Summary**: the `avg AHI` KPI switches to the mean of `ahiScored` over nights that
-  have it (falling back to the device-flag figure when none do). `AHI_TIP` is rewritten:
-  it now describes re-scoring from the flow channel, names OSA/CSA/hypopnea, and states
-  that hypopneas are scored and shown but not counted into the AHI figure (matching the
-  vendor), plus the severity bands it already explains.
+- **Summary**: the `avg AHI` KPI switches to the mean of `ahiScored ?? ahi` per night —
+  each night's scored AHI when it has one, its device-flag figure otherwise. `AHI_TIP` is
+  rewritten: it now describes re-scoring from the flow channel, names OSA/CSA/hypopnea, and
+  states that hypopneas are scored and shown but not counted into the AHI figure (matching
+  the vendor), plus the severity bands it already explains.
 - **`NightTable`**: the `AHI` column shows `ahiScored ?? ahi`; the `apnea` column shows
   the scored apnea count with the device count in a tooltip.
 - **`TrendChart`**: the AHI series uses `ahiScored ?? ahi`.
