@@ -23,6 +23,8 @@ const night = (name: string, y: number, m: number, d: number): Night => ({
   partial: false,
   breath: null,
   breaths: null,
+  scored: null,
+  ahiScored: null,
 })
 
 test('night-loaded inserts sorted by date descending', () => {
@@ -106,6 +108,12 @@ test('kpis of nothing is zeros, not NaN', () => {
   const k = kpis([])
   expect(k.avgP95).toBe(0)
   expect(k.avgAhi).toBe(0)
+})
+
+test('kpis prefers the scored AHI and falls back to device flags', () => {
+  const a = { ...night('01082026', 2026, 8, 1), ahi: 9, ahiScored: 2.5 }
+  const b = { ...night('02082026', 2026, 8, 2), ahi: 3, ahiScored: null }
+  expect(kpis([a, b]).avgAhi).toBeCloseTo((2.5 + 3) / 2, 9)
 })
 
 test('kpis averages breath-derived HP percentiles over nights that have them', () => {

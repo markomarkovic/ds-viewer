@@ -3,11 +3,13 @@ import { kpis } from '../state'
 
 const AHI_TIP =
   'The Apnea-Hypopnea Index (AHI) is the average number of breathing ' +
-  'pauses (apneas) and shallow breathing events (hypopneas) per hour of ' +
-  'sleep. It diagnoses sleep apnea and measures how bad it is. An AHI ' +
-  'under 5 is normal, 5 to 14 is mild, 15 to 29 is moderate, and 30 or ' +
-  'more is severe. This viewer counts the apneas flagged by the device ' +
-  'itself; hypopneas are not scored.'
+  'pauses per hour of sleep. Under 5 is normal, 5 to 14 mild, 15 to 29 ' +
+  'moderate, 30 or more severe. This figure is estimated by this viewer ' +
+  "using the vendor's own scoring: obstructive and central apneas " +
+  'detected from the flow channel, per hour of mask-on time. Hypopneas ' +
+  'are detected and shown on the night page but, matching the vendor, ' +
+  'not counted into the AHI. Nights without enough data fall back to ' +
+  "the device's own apnea flags."
 
 export function Summary({ nights }: { nights: Night[] }) {
   const k = kpis(nights)

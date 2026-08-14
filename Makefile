@@ -26,6 +26,9 @@ test-diff: ## Differential test against real data: make test-diff DS1_DIR=~/Down
 test-reports: ## Breath-metric oracle vs vendor reports: make test-reports DS1_DIR=~/Downloads/dreamsleep
 	DS1_DIR=$(DS1_DIR) pnpm vitest run src/test/reports.test.ts
 
+test-events: ## Scored-event oracle vs vendor .EVT5 files: make test-events DS1_DIR=~/Downloads/dreamsleep
+	DS1_DIR=$(DS1_DIR) pnpm vitest run src/test/events.test.ts
+
 typecheck: ## tsc --noEmit
 	pnpm typecheck
 
@@ -41,4 +44,4 @@ export: ## Decode .ds1 to CSV: make export OUT=csv IN="path/*.ds1"
 clean: ## Remove build output and caches
 	rm -rf dist .vite node_modules/.vite
 
-.PHONY: help setup dev build test test-diff test-reports typecheck format lint export clean
+.PHONY: help setup dev build test test-diff test-reports test-events typecheck format lint export clean

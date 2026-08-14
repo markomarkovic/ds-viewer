@@ -151,15 +151,15 @@ immediately after an `APNEA` record.
 
 Compared against the vendor software's own per-day table, across nine consecutive days:
 
-| quantity                                                                                | agreement                                            | how the app derives it                                                                      |
-| --------------------------------------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| **Duration**                                                                            | ✅ exact (one day to the second, rest within ~1 min) | `Σ samples / 10 Hz` over all sessions in the file                                           |
-| **Work Mode**                                                                           | ✅ exact (`AUTO`)                                    | PARAM 0x04                                                                                  |
-| **Avg. Pressure**                                                                       | ✅ exact on all 9 days                               | mean of the raw pressure channel, **truncated** to int in 0.1 cmH2O                         |
-| **Max. Pressure**                                                                       | ≈ within 0.1 on 9/9                                  | max **after** the α=20 low-pass (raw max runs 1–2 cmH2O high)                               |
-| **P90 / P95**                                                                           | ✅ exact, 13/13 report nights (viewer port)          | histogram of the α=20-smoothed pressure over the whole night — see below                    |
-| **Tidal volume / breath rate / inspiration:expiration ratio / minute volume / leakage** | ✅ validated against the saved reports (viewer port) | per-breath lists from flow-channel segmentation (`CalIsnpExp`/`GetInspExpPress`)            |
-| **Apnea / AHI**                                                                         | ❌ not reproduced                                    | the app **ignores the device's stored `APNEA` records** and re-scores from the flow channel |
+| quantity                                                                                | agreement                                                       | how the app derives it                                                                                 |
+| --------------------------------------------------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| **Duration**                                                                            | ✅ exact (one day to the second, rest within ~1 min)            | `Σ samples / 10 Hz` over all sessions in the file                                                      |
+| **Work Mode**                                                                           | ✅ exact (`AUTO`)                                               | PARAM 0x04                                                                                             |
+| **Avg. Pressure**                                                                       | ✅ exact on all 9 days                                          | mean of the raw pressure channel, **truncated** to int in 0.1 cmH2O                                    |
+| **Max. Pressure**                                                                       | ≈ within 0.1 on 9/9                                             | max **after** the α=20 low-pass (raw max runs 1–2 cmH2O high)                                          |
+| **P90 / P95**                                                                           | ✅ exact, 13/13 report nights (viewer port)                     | histogram of the α=20-smoothed pressure over the whole night — see below                               |
+| **Tidal volume / breath rate / inspiration:expiration ratio / minute volume / leakage** | ✅ validated against the saved reports (viewer port)            | per-breath lists from flow-channel segmentation (`CalIsnpExp`/`GetInspExpPress`)                       |
+| **Apnea / AHI**                                                                         | ✅ per-event exact vs the app's own `.EVT5` files (viewer port) | expiratory-pause scoring over the breath list; the app **ignores the device's stored `APNEA` records** |
 
 Two things this pins down:
 
@@ -179,9 +179,34 @@ Two things this pins down:
   [`docs/superpowers/specs/2026-08-14-breath-metrics-v1-design.md`](docs/superpowers/specs/2026-08-14-breath-metrics-v1-design.md).
 - The **Apnea count in the software is not what the device wrote.** On one night the app reported
   10 apneas where the file contained 6 `0x9a` records; on another, 5 where the file contained 9.
-  `AnalysisData` keeps `0x9a` only as `TEvent{iStart, iLen}`, and `GetAI`/`CalEvents`/`CalculationHI`
-  then score `ET_OSA`/`ET_CSA`/`ET_HI` from the re-derived breath list. The displayed
-  AHI is exactly `apnea_count / duration_hours` truncated to 1 dp — no hypopnea term.
+  `AnalysisData` keeps `0x9a` only as `TEvent{iStart, iLen}`, and `CalEvents`/`CalculationHI`
+  re-score `ET_OSA`/`ET_CSA`/`ET_HI` from the re-derived breath list: an apnea is an
+  expiratory pause of 9.6–49.4 s with leak under 700 counts (CSA when tidal volume fades in,
+  ramps out, and the pause is under 15 s; OSA otherwise), and a hypopnea is a 30–70 %
+  tidal-volume reduction lasting ≥ 10.0 s. The displayed AHI counts **apneas only** per hour
+  of non-zero-pressure time (minus 5 minutes when that exceeds 20 minutes), truncated to
+  1 dp — hypopneas are scored and saved but never enter the figure. The viewer ports this
+  scorer (`src/parse/events.ts`) and matches the app's own persisted events — type, start,
+  duration — on every corpus night; the transcription lives in
+  [`docs/superpowers/specs/2026-08-14-event-scoring-design.md`](docs/superpowers/specs/2026-08-14-event-scoring-design.md).
+
+## The `.EVT5` sidecar
+
+Opening a `.ds1` leaves a `DDMMYYYY.EVT5` beside it: the app's persisted scored-event list,
+which it reads back on later opens instead of re-scoring. Little-endian, packed structs:
+
+- **Header** (4096 bytes, zero-padded): int32 version (=1), int32 session count, then per
+  session an 18-byte record — uint16 block ID, int64 start ticks (.NET `DateTime`), int64
+  end ticks.
+- **Event records** (20 bytes each, from offset 4096): uint16 order, int64 start (**ms**
+  from the first session's start, sessions joined with wall-clock gap padding), int32
+  duration (**ms**), uint8 type (`0x15` OSA / `0x16` CSA / `0x17` hypopnea), uint8
+  validation (0 auto-scored, 1 user-confirmed, 2 user-deleted), uint16 block ID, two spare
+  bytes. Auto-scored events are written all apneas first, then all hypopneas, each in
+  breath order — the file is not globally time-sorted.
+
+User edits in the app append/flag records via the validation byte, so a fresh file is all
+zeros there and an edited one is not.
 
 So the file gives you the ground truth (pressure, flow, device-flagged events); everything else in
 that UI is the PC software's own re-analysis of the 10 Hz flow channel.

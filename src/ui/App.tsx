@@ -156,7 +156,7 @@ export function App() {
             <TrendChart
               title="AHI"
               nights={visible}
-              value={(n) => n.ahi}
+              value={(n) => n.ahiScored ?? n.ahi}
               color="#a54c3a"
             />
             <TrendChart

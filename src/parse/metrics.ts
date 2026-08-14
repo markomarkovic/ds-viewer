@@ -2,6 +2,7 @@ import type { Deci, Lpm, Night, RawSession, Session } from '../types'
 import { deci, FLOW_LPM, HZ } from '../types'
 import { reduceBreaths, segmentBreaths } from './breath'
 import { dateFromName } from './ds1'
+import { ahiScored, scoreEvents } from './events'
 import { lowpass, lowpassF32, lowpassRoundF32, median } from './signal'
 
 export function accumulateHistogram(
@@ -109,6 +110,7 @@ export function buildNight(
   }
   const breathTable = segmentBreaths(flowSmooth, flowBase)
   const breathMetrics = reduceBreaths(breathTable, pressSmooth)
+  const scored = breathMetrics ? scoreEvents(breathTable) : null
 
   const hours = totalSamples / HZ / 3600
   return {
@@ -131,5 +133,7 @@ export function buildNight(
     partial,
     breath: breathMetrics,
     breaths: breathMetrics ? breathTable : null,
+    scored,
+    ahiScored: scored ? ahiScored(scored, pressSmooth) : null,
   }
 }

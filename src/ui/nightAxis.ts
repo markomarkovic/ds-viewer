@@ -1,4 +1,4 @@
-import type { Night, Session } from '../types'
+import type { Night, ScoredEvent, Session } from '../types'
 import { HZ } from '../types'
 
 export type PlacedSession = { session: Session; offsetSec: number }
@@ -61,4 +61,67 @@ export function nightBounds(night: Night): {
   const last = placed[placed.length - 1]
   const lastEnd = last ? last.offsetSec + last.session.press.length / HZ : 0
   return { firstStart, lastEnd }
+}
+
+/**
+ * Display position of a scored event, in seconds since noon.
+ *
+ * The stored interval is the vendor-validated event and is never modified.
+ * This maps it into its containing session (anchoring there also avoids the
+ * padded timeline's small cumulative drift vs recorded session starts) and
+ * then, display-only, slides the bracket LEFT by up to its own length onto
+ * the quietest same-length flow window when that window is clearly quieter:
+ * the vendor's segmenter occasionally anchors an apnea one shallow breath
+ * late, which would otherwise draw the bracket over the post-pause breaths.
+ */
+export function scoredSpanSec(
+  night: Night,
+  e: ScoredEvent
+): { from: number; to: number } {
+  const placed = placeSessions(night)
+  let padded = 0
+  let k = 0
+  let inSession = e.start
+  for (let i = 0; i < night.sessions.length; i++) {
+    if (i > 0) {
+      const gapMs =
+        night.sessions[i]!.start.getTime() -
+        night.sessions[i - 1]!.end.getTime()
+      padded += Math.abs(Math.trunc(gapMs / 1000)) * HZ
+    }
+    if (e.start >= padded) {
+      k = i
+      inSession = e.start - padded
+    }
+    padded += night.sessions[i]!.press.length
+  }
+  const flow = night.sessions[k]?.flow
+  const start = flow ? snapLeft(flow, inSession, e.len) : inSession
+  const from = (placed[k]?.offsetSec ?? 0) + start / HZ
+  return { from, to: from + e.len / HZ }
+}
+
+// Slide-left-only snap: the quietest same-length window in [s0-len, s0]
+// (total flow variation), taken only when clearly quieter than the stored
+// window (< 70%), so correctly-placed brackets never jitter.
+function snapLeft(flow: ArrayLike<number>, s0: number, len: number): number {
+  const lo = Math.max(0, s0 - len)
+  const hi = s0
+  if (len <= 0 || s0 < 0 || s0 + len > flow.length || hi <= lo) return s0
+  const n = hi + len - lo
+  const pre = new Float64Array(n)
+  for (let i = 1; i < n; i++)
+    pre[i] = pre[i - 1]! + Math.abs(flow[lo + i]! - flow[lo + i - 1]!)
+  const tv = (w: number) => pre[w - lo + len - 1]! - pre[w - lo]!
+  const cur = tv(s0)
+  let best = s0
+  let bestTv = cur
+  for (let w = lo; w <= hi; w++) {
+    const t = tv(w)
+    if (t < bestTv) {
+      bestTv = t
+      best = w
+    }
+  }
+  return bestTv < cur * 0.7 ? best : s0
 }
