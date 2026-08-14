@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'preact/hooks'
 import uPlot from 'uplot'
-import type { EventKind, Night } from '../types'
+import type { EventKind, Night, ScoredKind } from '../types'
 import { cmH2O, deci, PARAM, WORKMODE } from '../types'
 import { axisTheme, Chart, nightCursorSync, tooltipPlugin } from './Chart'
 import { Estimated } from './Estimated'
@@ -304,11 +304,30 @@ const LANES: Array<{
   { kind: 'PRESS_DOWN', label: 'press down', color: '#8a6d3b', row: 0 },
 ]
 
+// device apnea shares LANES' row/kind but gets a dimmer color and a
+// "(device)" label once scored spans are on the same chart, to keep it
+// visually distinct from the scored OSA lane below.
+const DEVICE_LANES_SCORED: typeof LANES = LANES.map((l) =>
+  l.kind === 'APNEA' ? { ...l, label: 'apnea (device)', color: '#c3333388' } : l
+)
+
+const SCORED_LANES: Array<{
+  kind: ScoredKind
+  label: string
+  color: string
+  row: number
+}> = [
+  { kind: 'OSA', label: 'OSA', color: '#c33', row: 5 },
+  { kind: 'CSA', label: 'CSA', color: '#8338ec', row: 4 },
+  { kind: 'HYP', label: 'hypopnea', color: '#e8a33d', row: 3 },
+]
+
 /**
- * Device-flagged events as a uPlot chart, so it shares the night cursor
- * sync and axis geometry with the strips above and the waveform below.
- * The marks are painted in a draw hook; an invisible series carries the
- * event times so the tooltip can name the nearest mark.
+ * Device-flagged events (and, once scoring has run, the scored OSA/CSA/
+ * hypopnea spans above them) as a uPlot chart, so it shares the night
+ * cursor sync and axis geometry with the strips above and the waveform
+ * below. Marks and spans are painted in a draw hook; an invisible series
+ * carries their times so the tooltip can name the nearest one.
  */
 function EventChart({
   night,
@@ -322,7 +341,11 @@ function EventChart({
   onCenter: (sec: number) => void
 }) {
   const brush = stripCursorOpts(view, onWindow, onCenter)
-  const events: Array<{
+  const scored = night.scored
+  const deviceLanes = scored !== null ? DEVICE_LANES_SCORED : LANES
+  const laneList = scored !== null ? [...SCORED_LANES, ...deviceLanes] : LANES
+
+  const ticks: Array<{
     sec: number
     row: number
     label: string
@@ -330,9 +353,9 @@ function EventChart({
   }> = []
   for (const { session, offsetSec } of placeSessions(night)) {
     for (const e of session.events) {
-      const lane = LANES.find((l) => l.kind === e.kind)
+      const lane = deviceLanes.find((l) => l.kind === e.kind)
       if (!lane) continue
-      events.push({
+      ticks.push({
         sec: offsetSec + e.index / 10,
         row: lane.row,
         label: lane.label,
@@ -340,11 +363,48 @@ function EventChart({
       })
     }
   }
+
+  const off0 = placeSessions(night)[0]?.offsetSec ?? 0
+  const spans = (scored ?? []).map((e) => {
+    const lane = SCORED_LANES.find((l) => l.kind === e.kind)!
+    const startSec = off0 + e.start / 10
+    const endSec = off0 + (e.start + e.len) / 10
+    return {
+      row: lane.row,
+      label: lane.label,
+      color: lane.color,
+      startSec,
+      endSec,
+      midSec: (startSec + endSec) / 2,
+      durSec: e.len / 10,
+      kind: e.kind,
+    }
+  })
+
+  const events: Array<{
+    sec: number
+    row: number
+    label: string
+    color: string
+    durSec?: number
+    kind?: ScoredKind
+  }> = [
+    ...ticks,
+    ...spans.map((s) => ({
+      sec: s.midSec,
+      row: s.row,
+      label: s.label,
+      color: s.color,
+      durSec: s.durSec,
+      kind: s.kind,
+    })),
+  ]
   events.sort((a, b) => a.sec - b.sec)
   const xs = events.map((e) => e.sec)
   const ys = events.map((e) => e.row + 0.5)
   const data: uPlot.AlignedData = xs.length ? [xs, ys] : [[0], [null]]
   const counts = night.events
+
   return (
     <div>
       <Chart
@@ -352,12 +412,15 @@ function EventChart({
         build={(el, width) =>
           new uPlot(
             {
-              title: 'events (device-flagged)',
+              title:
+                scored !== null
+                  ? 'events — scored (estimated) · device-flagged'
+                  : 'events (device-flagged)',
               width,
-              height: 140,
+              height: scored !== null ? 200 : 140,
               scales: {
                 x: { time: false, range: [0, 86400] },
-                y: { range: [0, 3] },
+                y: { range: scored !== null ? [0, 6] : [0, 3] },
               },
               series: [
                 {},
@@ -375,9 +438,15 @@ function EventChart({
                 {
                   ...axisTheme(),
                   scale: 'y',
-                  size: 56,
-                  splits: () => LANES.map((l) => l.row + 0.5),
-                  values: () => [...LANES].reverse().map((l) => l.label),
+                  size: scored !== null ? 100 : 56,
+                  splits: () => laneList.map((l) => l.row + 0.5),
+                  values: () =>
+                    // the null-scored (unchanged) 3-lane axis pairs splits
+                    // with a reversed label list; the 6-lane axis pairs
+                    // them directly so row 5 (OSA) lands at the top.
+                    (scored !== null ? laneList : [...laneList].reverse()).map(
+                      (l) => l.label
+                    ),
                   grid: { show: false },
                 },
               ],
@@ -391,7 +460,10 @@ function EventChart({
                   const px = u.valToPos(ev.sec, 'x')
                   const left = u.cursor.left
                   if (left == null || Math.abs(px - left) > 24) return null
-                  return `${clockLabel(ev.sec)}\n${ev.label}`
+                  if (ev.durSec === undefined)
+                    return `${clockLabel(ev.sec)}\n${ev.label}`
+                  const kindLabel = ev.kind === 'HYP' ? 'hypopnea' : ev.kind
+                  return `${clockLabel(ev.sec)}\n${kindLabel}: ${ev.durSec.toFixed(1)}s`
                 }),
               ],
               hooks: {
@@ -402,15 +474,28 @@ function EventChart({
                     const ctx = u.ctx
                     ctx.save()
                     const dpr = devicePixelRatio
-                    for (const ev of events) {
-                      const x = u.valToPos(ev.sec, 'x', true)
-                      const y0 = u.valToPos(ev.row + 0.1, 'y', true)
-                      const y1 = u.valToPos(ev.row + 0.9, 'y', true)
-                      ctx.fillStyle = ev.color
+                    for (const t of ticks) {
+                      const x = u.valToPos(t.sec, 'x', true)
+                      const y0 = u.valToPos(t.row + 0.1, 'y', true)
+                      const y1 = u.valToPos(t.row + 0.9, 'y', true)
+                      ctx.fillStyle = t.color
                       ctx.fillRect(
                         x - dpr,
                         Math.min(y0, y1),
                         2 * dpr,
+                        Math.abs(y0 - y1)
+                      )
+                    }
+                    for (const s of spans) {
+                      const x0 = u.valToPos(s.startSec, 'x', true)
+                      const x1 = u.valToPos(s.endSec, 'x', true)
+                      const y0 = u.valToPos(s.row + 0.1, 'y', true)
+                      const y1 = u.valToPos(s.row + 0.9, 'y', true)
+                      ctx.fillStyle = s.color
+                      ctx.fillRect(
+                        x0,
+                        Math.min(y0, y1),
+                        Math.max(x1 - x0, 2 * dpr),
                         Math.abs(y0 - y1)
                       )
                     }
@@ -425,8 +510,20 @@ function EventChart({
         }
       />
       <small>
-        {counts.apnea} apnea · {counts.pressUp} press-up · {counts.pressDown}{' '}
-        press-down
+        {scored !== null ? (
+          <>
+            {scored.filter((e) => e.kind === 'OSA').length} OSA ·{' '}
+            {scored.filter((e) => e.kind === 'CSA').length} CSA ·{' '}
+            {scored.filter((e) => e.kind === 'HYP').length} hypopnea (scored) ·{' '}
+            {counts.apnea} apnea (device) · {counts.pressUp} press-up ·{' '}
+            {counts.pressDown} press-down
+          </>
+        ) : (
+          <>
+            {counts.apnea} apnea · {counts.pressUp} press-up ·{' '}
+            {counts.pressDown} press-down
+          </>
+        )}
       </small>
     </div>
   )

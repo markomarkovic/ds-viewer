@@ -124,7 +124,7 @@ export function kpis(nights: Night[]): {
     totalHours,
     avgHours: count ? totalHours / count : 0,
     avgP95: avg((n) => cmH2O(n.press.p95)),
-    avgAhi: avg((n) => n.ahi),
+    avgAhi: avg((n) => n.ahiScored ?? n.ahi),
     avgLeak: avg((n) => n.leakMedian),
     avgHp90: avgB((b) => b.expPress.p90),
     avgHp95: avgB((b) => b.expPress.p95),

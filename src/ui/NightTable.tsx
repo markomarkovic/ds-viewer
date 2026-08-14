@@ -20,8 +20,9 @@ const getters: Record<SortKey, (n: Night) => number> = {
   p90: (n) => n.press.p90,
   p95: (n) => n.press.p95,
   max: (n) => n.press.max,
-  ahi: (n) => n.ahi,
-  apnea: (n) => n.events.apnea,
+  ahi: (n) => n.ahiScored ?? n.ahi,
+  apnea: (n) =>
+    n.scored ? n.scored.filter((e) => e.kind !== 'HYP').length : n.events.apnea,
   leak: (n) => n.leakMedian,
   mode: (n) => n.sessions[0]?.params.get(PARAM.WorkMode) ?? -1,
 }
@@ -90,8 +91,16 @@ export function NightTable({
               <td>{cmH2O(n.press.p90).toFixed(1)}</td>
               <td>{cmH2O(n.press.p95).toFixed(1)}</td>
               <td>{cmH2O(n.press.max).toFixed(1)}</td>
-              <td>{n.ahi.toFixed(1)}</td>
-              <td>{n.events.apnea}</td>
+              <td>{(n.ahiScored ?? n.ahi).toFixed(1)}</td>
+              <td
+                data-tooltip={
+                  n.scored ? `device flags: ${n.events.apnea}` : undefined
+                }
+              >
+                {n.scored
+                  ? n.scored.filter((e) => e.kind !== 'HYP').length
+                  : n.events.apnea}
+              </td>
               <td>{n.leakMedian.toFixed(1)}</td>
               <td>{mode !== undefined ? (WORKMODE[mode] ?? mode) : '–'}</td>
               <td>▸</td>

@@ -1,6 +1,6 @@
 import uPlot from 'uplot'
 import { minmaxEnvelope } from '../parse/decimate'
-import type { Night } from '../types'
+import type { Night, ScoredKind } from '../types'
 import { FLOW_LPM, HZ } from '../types'
 import { axisTheme, Chart, nightCursorSync, tooltipPlugin } from './Chart'
 import type { NightView } from './nightAxis'
@@ -15,6 +15,16 @@ const PRESETS = [
 
 const PRESS_COLOR = '#3a7ca5'
 const FLOW_COLOR = '#4c9a52'
+
+const SPAN_COLOR: Record<ScoredKind, string> = {
+  OSA: '#c33',
+  CSA: '#8338ec',
+  HYP: '#e8a33d',
+}
+const AXIS_FONT =
+  '12px system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif'
+
+type Span = { from: number; to: number; label: string; kind: ScoredKind }
 
 /** clockLabel plus seconds, for the waveform's zoom levels */
 const clockLabelS = (sec: number) =>
@@ -99,6 +109,14 @@ export function Waveform({
       .map((e) => offsetSec + e.index / HZ)
   )
 
+  const off0 = placed[0]?.offsetSec ?? 0
+  const spans: Span[] = (night.scored ?? []).map((e) => ({
+    from: off0 + e.start / 10,
+    to: off0 + (e.start + e.len) / 10,
+    label: `${e.kind === 'HYP' ? 'hypopnea' : e.kind}: ${(e.len / 10).toFixed(1)}s`,
+    kind: e.kind,
+  }))
+
   return (
     <section class="waveform">
       <div class="toolbar">
@@ -160,6 +178,7 @@ export function Waveform({
         view={view}
         channel="flow"
         apneas={apneas}
+        spans={spans}
         onWindow={onWindow}
       />
       <WaveChart
@@ -204,12 +223,14 @@ function WaveChart({
   view,
   channel,
   apneas,
+  spans,
   onWindow,
 }: {
   night: Night
   view: NightView
   channel: 'press' | 'flow'
   apneas: number[]
+  spans?: Span[]
   onWindow: (fromSec: number, toSec: number) => void
 }) {
   const c = CHANNELS[channel]
@@ -306,6 +327,32 @@ function WaveChart({
                       ctx.lineTo(x, u.bbox.top + 2)
                       ctx.closePath()
                       ctx.fill()
+                    }
+                  }
+                  if (isFlow && spans) {
+                    ctx.font = AXIS_FONT
+                    for (const sp of spans) {
+                      if (
+                        sp.to < view.startSec ||
+                        sp.from > view.startSec + view.windowSec
+                      )
+                        continue
+                      const x0 = u.valToPos(sp.from, 'x', true)
+                      const x1 = u.valToPos(sp.to, 'x', true)
+                      const y = u.bbox.top + 12
+                      const color = SPAN_COLOR[sp.kind]
+                      ctx.strokeStyle = color
+                      ctx.fillStyle = color
+                      ctx.beginPath()
+                      ctx.moveTo(x0, y)
+                      ctx.lineTo(x1, y)
+                      ctx.moveTo(x0, y - 3)
+                      ctx.lineTo(x0, y + 3)
+                      ctx.moveTo(x1, y - 3)
+                      ctx.lineTo(x1, y + 3)
+                      ctx.stroke()
+                      const w = ctx.measureText(sp.label).width
+                      if (x1 - x0 >= w) ctx.fillText(sp.label, x0 + 2, y - 5)
                     }
                   }
                   ctx.restore()
