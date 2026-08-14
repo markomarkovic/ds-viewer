@@ -6,7 +6,13 @@ import { axisTheme, Chart, nightCursorSync, tooltipPlugin } from './Chart'
 import { Estimated } from './Estimated'
 import { Histogram } from './Histogram'
 import type { NightView } from './nightAxis'
-import { clockLabel, nightBounds, nightGrid, placeSessions } from './nightAxis'
+import {
+  clockLabel,
+  nightBounds,
+  nightGrid,
+  placeSessions,
+  scoredSpanSec,
+} from './nightAxis'
 import { Waveform } from './Waveform'
 
 /** Header-bar content for the detail page; App renders it in <header>. */
@@ -364,11 +370,9 @@ function EventChart({
     }
   }
 
-  const off0 = placeSessions(night)[0]?.offsetSec ?? 0
   const spans = (scored ?? []).map((e) => {
     const lane = SCORED_LANES.find((l) => l.kind === e.kind)!
-    const startSec = off0 + e.start / 10
-    const endSec = off0 + (e.start + e.len) / 10
+    const { from: startSec, to: endSec } = scoredSpanSec(night, e)
     return {
       row: lane.row,
       label: lane.label,

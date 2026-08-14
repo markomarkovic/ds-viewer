@@ -368,6 +368,16 @@ register (lowercase labels; `<Estimated>`/info-tip provenance, one popup per ele
   existing device lanes relabeled `apnea (device)` / `press up` / `press down`. Scored
   lanes render spans (start to end), not ticks. The chart title distinguishes the two
   provenances.
+- **Display-only pause snapping**: the vendor's segmenter occasionally anchors an
+  apnea one shallow "blip" breath late, leaving the stored interval over the
+  post-pause breaths (~7% of corpus apneas; measured). For rendering only, the
+  bracket slides LEFT by up to its own length onto the quietest same-length raw-flow
+  window (minimum total variation), and only when that window is clearly quieter
+  (< 70% of the stored window's variation), so correctly-anchored brackets never
+  move. The stored data, durations, labels, AHI, and the `.EVT5` oracle are
+  untouched — `scoredSpanSec` in `src/ui/nightAxis.ts` owns the mapping, which also
+  anchors events inside their containing session (eliminating the padded-timeline
+  drift vs recorded session starts).
 - **Waveform**: the flow pane draws the vendor-style span — a horizontal bracket over
   `[start, start + len]` with the label `OSA: 12.7s` (kind plus duration to one
   decimal) — when the event overlaps the visible window. Device apnea tick marks stay.

@@ -4,7 +4,12 @@ import type { Night, ScoredKind } from '../types'
 import { FLOW_LPM, HZ } from '../types'
 import { axisTheme, Chart, nightCursorSync, tooltipPlugin } from './Chart'
 import type { NightView } from './nightAxis'
-import { clockLabel, nightBounds, placeSessions } from './nightAxis'
+import {
+  clockLabel,
+  nightBounds,
+  placeSessions,
+  scoredSpanSec,
+} from './nightAxis'
 
 const PRESETS = [
   ['30s', 30],
@@ -109,10 +114,8 @@ export function Waveform({
       .map((e) => offsetSec + e.index / HZ)
   )
 
-  const off0 = placed[0]?.offsetSec ?? 0
   const spans: Span[] = (night.scored ?? []).map((e) => ({
-    from: off0 + e.start / 10,
-    to: off0 + (e.start + e.len) / 10,
+    ...scoredSpanSec(night, e),
     label: `${e.kind === 'HYP' ? 'hypopnea' : e.kind}: ${(e.len / 10).toFixed(1)}s`,
     kind: e.kind,
   }))
