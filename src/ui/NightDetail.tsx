@@ -113,7 +113,7 @@ function BreathStats({ night }: { night: Night }) {
       f1(b.bpm.p95),
     ],
     [
-      'I:E',
+      'Inspiration : Expiration ratio (I:E)',
       `1:${f1(b.ie.avg)}`,
       `1:${f1(b.ie.p50)}`,
       `1:${f1(b.ie.p90)}`,

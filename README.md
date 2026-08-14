@@ -77,7 +77,8 @@ them to choose the waveform window, or click to centre it. Below, the flow and p
 waveforms share a linked cursor with the strips, with window presets (30 s to 5 m),
 First/Previous/Next/Last paging, brush-to-zoom, and the device's apnea markers drawn on
 the traces. A time-in-pressure histogram with the cumulative curve and P90/P95 markers,
-and a breath-metrics table (tidal volume, breath rate, I:E, minute ventilation, leakage)
+and a breath-metrics table (tidal volume, breath rate, inspiration:expiration ratio,
+minute ventilation, leakage)
 close the page. Dark mode follows the browser and the charts retint live.
 
 The summary's Horizontal Pressure P90/P95 and the night page's breath metrics
@@ -148,15 +149,15 @@ Sessions are aligned to 256-byte boundaries; a file holds one to three of them.
 Checked against the vendor software's own per-day table across nine days, and against its
 saved daily and statistical reports across thirteen nights:
 
-| Quantity                               | Result                                                                     |
-| -------------------------------------- | -------------------------------------------------------------------------- |
-| Duration                               | Exact — one day matched to the second, the rest within a minute            |
-| Avg. pressure                          | Exact on all nine days                                                     |
-| Work mode, pressure settings           | Exact                                                                      |
-| Max. pressure                          | Within 0.1 cmH2O, once the low-pass filter is applied                      |
-| P90 / P95 (viewer)                     | Exact on all thirteen report nights                                        |
-| TV, breath rate, I:E, leakage (viewer) | Match the reports to the printed digit (minute-volume means within 0.01 %) |
-| Apnea count / AHI                      | **Not reproduced** — see below                                             |
+| Quantity                                                                  | Result                                                                     |
+| ------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Duration                                                                  | Exact — one day matched to the second, the rest within a minute            |
+| Avg. pressure                                                             | Exact on all nine days                                                     |
+| Work mode, pressure settings                                              | Exact                                                                      |
+| Max. pressure                                                             | Within 0.1 cmH2O, once the low-pass filter is applied                      |
+| P90 / P95 (viewer)                                                        | Exact on all thirteen report nights                                        |
+| Tidal volume, breath rate, inspiration:expiration ratio, leakage (viewer) | Match the reports to the printed digit (minute-volume means within 0.01 %) |
+| Apnea count / AHI                                                         | **Not reproduced** — see below                                             |
 
 Two things are worth understanding before you compare numbers with the vendor software:
 
