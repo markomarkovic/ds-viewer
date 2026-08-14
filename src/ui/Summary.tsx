@@ -1,6 +1,5 @@
 import type { Night } from '../types'
 import { kpis } from '../state'
-import { Estimated } from './Estimated'
 
 const AHI_TIP =
   'The Apnea-Hypopnea Index (AHI) is the average number of breathing ' +
@@ -13,10 +12,10 @@ const AHI_TIP =
 export function Summary({ nights }: { nights: Night[] }) {
   const k = kpis(nights)
   const HP_TIP =
-    'Horizontal Pressure P90/P95 as the vendor computes them: a histogram ' +
-    "of the smoothed pressure channel over the whole night (the vendor's " +
-    "CalPress method), matching the vendor's reports on the validation " +
-    'corpus. Channel-exact sample-stream avg P95: ' +
+    'Horizontal Pressure P90/P95, estimated by this viewer using the ' +
+    "vendor's own method: a histogram of the smoothed pressure channel " +
+    "over the whole night, matching the vendor's reports on the " +
+    'validation corpus. Channel-exact sample-stream avg P95: ' +
     `${k.avgP95.toFixed(1)} cmH2O.`
   const kpi = (label: string, value: string, tip?: string) => (
     <div style="text-align:center">
@@ -41,9 +40,7 @@ export function Summary({ nights }: { nights: Night[] }) {
       {k.avgHp90 !== null && k.avgHp95 !== null ? (
         <div style="text-align:center">
           <h4 style="margin-bottom:0">
-            <Estimated>
-              {k.avgHp90.toFixed(1)} / {k.avgHp95.toFixed(1)}
-            </Estimated>
+            {k.avgHp90.toFixed(1)} / {k.avgHp95.toFixed(1)}
           </h4>
           <small>
             HP P90/P95{' '}
