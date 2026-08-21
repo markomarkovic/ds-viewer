@@ -126,7 +126,7 @@ export function RangeSelector({
           return new uPlot(
             {
               width,
-              height: 64,
+              height: 128,
               scales: { x: { time: true } },
               series: [
                 {},

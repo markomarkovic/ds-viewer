@@ -260,7 +260,7 @@ function OverviewStrip({
           {
             title: channel,
             width,
-            height: 160,
+            height: 320,
             scales: { x: { time: false } },
             series: [
               {},

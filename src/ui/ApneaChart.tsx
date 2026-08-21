@@ -41,7 +41,7 @@ export function ApneaChart({ nights }: { nights: Night[] }) {
           new uPlot(
             {
               width,
-              height: 140,
+              height: 280,
               scales: { x: { time: true } },
               series: [
                 {},
