@@ -306,8 +306,8 @@ const LANES: Array<{
   row: number
 }> = [
   { kind: 'APNEA', label: 'apnea', color: '#c33', row: 2 },
-  { kind: 'PRESS_UP', label: 'press up', color: '#3a7ca5', row: 1 },
-  { kind: 'PRESS_DOWN', label: 'press down', color: '#8a6d3b', row: 0 },
+  { kind: 'PRESS_UP', label: 'pressure up', color: '#3a7ca5', row: 1 },
+  { kind: 'PRESS_DOWN', label: 'pressure down', color: '#8a6d3b', row: 0 },
 ]
 
 // device apnea shares LANES' row/kind but gets a dimmer color and a
@@ -442,7 +442,7 @@ function EventChart({
                 {
                   ...axisTheme(),
                   scale: 'y',
-                  size: scored !== null ? 100 : 56,
+                  size: 100,
                   splits: () => laneList.map((l) => l.row + 0.5),
                   // splits and labels are both drawn from laneList in the
                   // same order, so label i always names split i's row.
@@ -515,13 +515,13 @@ function EventChart({
             {scored.filter((e) => e.kind === 'OSA').length} OSA ·{' '}
             {scored.filter((e) => e.kind === 'CSA').length} CSA ·{' '}
             {scored.filter((e) => e.kind === 'HYP').length} hypopnea (scored) ·{' '}
-            {counts.apnea} apnea (device) · {counts.pressUp} press-up ·{' '}
-            {counts.pressDown} press-down
+            {counts.apnea} apnea (device) · {counts.pressUp} pressure-up ·{' '}
+            {counts.pressDown} pressure-down
           </>
         ) : (
           <>
-            {counts.apnea} apnea · {counts.pressUp} press-up ·{' '}
-            {counts.pressDown} press-down
+            {counts.apnea} apnea · {counts.pressUp} pressure-up ·{' '}
+            {counts.pressDown} pressure-down
           </>
         )}
       </small>
