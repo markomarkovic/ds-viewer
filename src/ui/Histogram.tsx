@@ -39,7 +39,7 @@ export function Histogram({ night }: { night: Night }) {
           new uPlot(
             {
               width,
-              height: 180,
+              height: 360,
               scales: { x: { time: false }, '%': { range: [0, 102] } },
               series: [
                 {},

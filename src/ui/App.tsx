@@ -4,6 +4,7 @@ import { filesFromDataTransfer, gather } from '../load/dropzone'
 import { initialState, reducer, visibleNights } from '../state'
 import type { WorkerResponse } from '../types'
 import { cmH2O } from '../types'
+import { ApneaChart } from './ApneaChart'
 import { NightDetail, NightHeader } from './NightDetail'
 import { NightTable } from './NightTable'
 import { RangeSelector } from './RangeSelector'
@@ -159,6 +160,7 @@ export function App() {
               value={(n) => n.ahiScored ?? n.ahi}
               color="#a54c3a"
             />
+            <ApneaChart nights={visible} />
             <TrendChart
               title="median leak (L/min)"
               nights={visible}

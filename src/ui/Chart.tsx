@@ -117,19 +117,36 @@ export function Chart({
   deps: readonly unknown[]
 }): JSX.Element {
   const ref = useRef<HTMLDivElement>(null)
+  // Rebuilding a chart empties its container, and a freshly built uPlot
+  // only reaches its full height a frame later. Either way the document
+  // gets shorter, the browser clamps the scroll position to the shorter
+  // page, and restoring the height does not scroll back — which is why
+  // paging the waveform used to walk the view up the page. Holding the
+  // last settled height as a floor keeps the document from ever shrinking.
+  const floor = useRef(0)
   useEffect(() => {
     const el = ref.current
     if (!el) return
+    if (floor.current) el.style.minHeight = `${floor.current}px`
+    const remeasure = () => {
+      el.style.minHeight = ''
+      floor.current = el.offsetHeight
+      el.style.minHeight = `${floor.current}px`
+    }
     let plot = build(el, el.clientWidth)
+    let raf = requestAnimationFrame(remeasure)
     const onResize = () => {
       plot.destroy()
       plot = build(el, el.clientWidth)
+      cancelAnimationFrame(raf)
+      raf = requestAnimationFrame(remeasure)
     }
     window.addEventListener('resize', onResize)
     // Rebuild on theme flips so canvas-painted colors follow the new theme
     const mq = window.matchMedia('(prefers-color-scheme: dark)')
     mq.addEventListener('change', onResize)
     return () => {
+      cancelAnimationFrame(raf)
       window.removeEventListener('resize', onResize)
       mq.removeEventListener('change', onResize)
       plot.destroy()
